@@ -972,7 +972,7 @@ class Window(Adw.ApplicationWindow):
                           lambda v: f"{v:+.1f} dB", "drive_db"))
 
         self.channels_group = Adw.PreferencesGroup(
-            title="Channels", description="Routing, crossover, level and delay for each speaker channel")
+            title="Channels", description="Routing and crossovers per speaker")
         left.append(self.channels_group)
         self.setup_dd = Gtk.DropDown(valign=Gtk.Align.CENTER, tooltip_text="Apply a channel setup")
         self.setup_dd.connect("notify::selected", self.on_setup)
