@@ -34,31 +34,14 @@ with a sub or a full 7.1 setup, and every app plays through it.
 - **Presets:** a list at the top of the window. Click one to load it, or save the
   current sound as a new one. Changes save into the active preset as you go.
 
-## Why not Easy Effects, JamesDSP or similar?
+## How it compares to Easy Effects, JamesDSP, etc.
 
-Those are great, flexible tools. Speaker Tuner trades their flexibility for
-being built into the audio system and focused on speakers:
-
-- **Nothing to keep running.** The processing is a PipeWire `filter-chain`
-  loaded by PipeWire itself. The app is just a settings window: close it and
-  your sound stays tuned, from login onward, with no background service or
-  autostart entry.
-- **System-level and multichannel.** It sits in front of one device as a
-  proper N-channel sink, so 5.1 content stays 5.1, and you get real per-channel
-  crossovers, delays and bass management, not just a stereo effects chain.
-- **Live changes without dropouts.** The filter layout is fixed, so moving a
-  slider updates the running filter (`pw-cli set-param`) instead of rebuilding
-  a pipeline.
-- **Speaker-first defaults.** Low cut, limiter, overdrive, 3D and crossovers
-  are the controls that matter for small or multi-way speakers, all on one
-  screen.
-- **Tiny and transparent.** One Python file, no compiled code, and the whole
-  DSP setup is a readable config file in
-  `~/.config/pipewire/pipewire.conf.d/speaker-tuner.conf`. Uninstalling
-  removes it.
-
-If you want convolution, plugin chains, per-app effects or microphone
-processing, Easy Effects is the better tool.
+- **Nothing to keep running:** processing runs inside PipeWire itself. Close
+  the app and your sound stays tuned from login onward.
+- **True multichannel:** 5.1 stays 5.1, with per-channel crossovers, delays
+  and bass management.
+- **No dropouts:** changes apply to the running filter live.
+- **Tiny:** one Python file and one readable PipeWire config.
 
 ## Requirements
 
