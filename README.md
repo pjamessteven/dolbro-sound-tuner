@@ -13,8 +13,9 @@
 
 Sound Tuner is a system-wide EQ, crossover and speaker tuner for Linux
 devices running PipeWire. It adds a virtual output, **Sound Tuner**, in
-front of any sound device, from a laptop's built-in speakers to a stereo pair
-with a sub or a full 7.1 setup, and every app plays through it.
+front of any sound device, from the built-in speakers of a laptop, tablet or
+mobile phone to a stereo pair with a sub or a full 7.1 setup, and every app
+plays through it.
 
 <img src="data/screenshots/main.webp" alt="Sound Tuner: shaping the EQ curve over the live output spectrum">
 
