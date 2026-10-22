@@ -1,4 +1,4 @@
-# Dolbro™ Speaker Tuner
+# <img src="data/icons/io.github.pjamessteven.SpeakerTuner.svg" width="56" align="center" alt=""> Dolbro™ Speaker Tuner
 
 **Get the most out of your shitty laptop speakers, or finely tune your audiophilic soundsystem.**
 

@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="face" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4a8fe7"/>
+      <stop offset="1" stop-color="#1c5fc4"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#16489a"/>
+      <stop offset="1" stop-color="#0f3577"/>
+    </linearGradient>
+    <radialGradient id="cone" cx="0.42" cy="0.38" r="0.7">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.32"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.06"/>
+    </radialGradient>
+    <linearGradient id="fill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="faceclip">
+      <rect x="8" y="12" width="112" height="100" rx="20"/>
+    </clipPath>
+  </defs>
+
+  <!-- base: GNOME-style rounded square with a darker bottom edge -->
+  <rect x="8" y="16" width="112" height="104" rx="20" fill="url(#edge)"/>
+  <rect x="8" y="12" width="112" height="100" rx="20" fill="url(#face)"/>
+
+  <g clip-path="url(#faceclip)">
+    <!-- speaker cone in the background -->
+    <circle cx="64" cy="62" r="40" fill="url(#cone)"/>
+    <circle cx="64" cy="62" r="40" fill="none" stroke="#ffffff" stroke-opacity="0.38" stroke-width="2.5"/>
+    <circle cx="64" cy="62" r="25" fill="none" stroke="#ffffff" stroke-opacity="0.3" stroke-width="2.5"/>
+    <circle cx="64" cy="62" r="11" fill="#ffffff" fill-opacity="0.28"/>
+
+    <!-- EQ grid -->
+    <g stroke="#ffffff" stroke-opacity="0.12" stroke-width="1.5">
+      <line x1="8" y1="62" x2="120" y2="62"/>
+    </g>
+
+    <!-- EQ curve with area fill -->
+    <path d="M 8 74 C 22 74, 24 46, 38 46 S 52 70, 64 68 S 80 52, 90 52 S 108 66, 120 62 L 120 112 L 8 112 Z"
+          fill="url(#fill)"/>
+    <path d="M 8 74 C 22 74, 24 46, 38 46 S 52 70, 64 68 S 80 52, 90 52 S 108 66, 120 62"
+          fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- band handles -->
+  <g fill="#ffffff" stroke="#1c5fc4" stroke-width="3">
+    <circle cx="38" cy="46" r="6.5"/>
+    <circle cx="64" cy="68" r="6.5"/>
+    <circle cx="90" cy="52" r="6.5"/>
+  </g>
+
+  <!-- top highlight -->
+  <rect x="8.5" y="12.5" width="111" height="99" rx="19.5" fill="none" stroke="#ffffff" stroke-opacity="0.18"/>
+</svg>

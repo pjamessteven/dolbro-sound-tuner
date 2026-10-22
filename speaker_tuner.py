@@ -1596,6 +1596,7 @@ class Window(Adw.ApplicationWindow):
 class App(Adw.Application):
     def __init__(self):
         super().__init__(application_id=APP_ID)
+        Gtk.Window.set_default_icon_name(APP_ID)
 
     def do_activate(self):
         win = self.props.active_window or Window(self)

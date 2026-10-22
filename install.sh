@@ -24,7 +24,7 @@ for arg in "$@"; do
 done
 
 if [ "$MODE" = "uninstall" ]; then
-    rm -f "$BIN/speaker-tuner" "$SHARE/applications/$APP_ID.desktop"
+    rm -f "$BIN/speaker-tuner" "$SHARE/applications/$APP_ID.desktop" "$SHARE/icons/hicolor/scalable/apps/$APP_ID.svg"
     rm -rf "$SHARE/speaker-tuner"
     if [ -f "$CONFIG/pipewire/pipewire.conf.d/speaker-tuner.conf" ]; then
         rm -f "$CONFIG/pipewire/pipewire.conf.d/speaker-tuner.conf"
@@ -167,6 +167,8 @@ cat > "$BIN/speaker-tuner" <<WRAP
 exec python3 "$SHARE/speaker-tuner/speaker_tuner.py" "\$@"
 WRAP
 chmod 755 "$BIN/speaker-tuner"
+install -Dm644 "$SRC/data/icons/$APP_ID.svg" "$SHARE/icons/hicolor/scalable/apps/$APP_ID.svg"
+command -v gtk-update-icon-cache >/dev/null && gtk-update-icon-cache -q -t "$SHARE/icons/hicolor" 2>/dev/null || true
 mkdir -p "$SHARE/applications"
 sed "s|^Exec=.*|Exec=$BIN/speaker-tuner|" "$SRC/data/$APP_ID.desktop" > "$SHARE/applications/$APP_ID.desktop.tmp"
 mv "$SHARE/applications/$APP_ID.desktop.tmp" "$SHARE/applications/$APP_ID.desktop"
