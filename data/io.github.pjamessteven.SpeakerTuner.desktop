@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Speaker Tuner
+Comment=EQ, loudness, 3D and crossover for your speakers
+Exec=speaker-tuner
+Icon=audio-speakers
+Terminal=false
+Categories=AudioVideo;Audio;
+Keywords=equalizer;eq;pipewire;speakers;bass;loudness;crossover;3d;
+StartupNotify=true
