@@ -13,10 +13,11 @@ with a sub or a full 7.1 setup, and every app plays through it.
 
 ## Features
 
-- **Parametric EQ you can draw:** 10 bands on a frequency-response graph.
-  Drag a point to set frequency and gain, scroll to change its width (Q), or
-  type exact values. A **live spectrum** of what's playing is drawn behind
-  the curve.
+- **An EQ you can draw:** sweep across the graph in either direction to paint
+  the curve, or drag individual points. The curve passes through your points
+  (the app works out the filter gains for you), and you can scroll to make a
+  band wider or narrower or type exact frequency, gain and width values. A
+  **live spectrum** of what's playing is drawn behind the curve.
 - **Per-channel routing and crossovers for any layout** (2.0, 2.1, 4.0, 5.1,
   7.1, …). For each speaker channel you set:
   - the source: same channel, left, right, mono, all channels (for a sub) or off

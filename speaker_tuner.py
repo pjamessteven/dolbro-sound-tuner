@@ -37,7 +37,8 @@ GRAPH_VERSION = 7  # bump when the node layout changes (needs an audio restart)
 RATE = 48000
 
 EQ_FREQS = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000]
-EQ_Q = 1.41  # one-octave bands
+EQ_Q = 1.0  # one-octave spacing; wide enough that the curve stays smooth between points
+OLD_EQ_Q = 1.41  # default before 0.4; migrated to EQ_Q
 LP_OFF, HP_OFF = 23000.0, 5.0  # filters parked outside the audible range
 FREQ_MIN, FREQ_MAX = 20.0, 20000.0
 MAX_INPUTS = 8  # builtin mixer has 8 inputs
@@ -59,7 +60,8 @@ PULSE_TO_PW = {"front-left": "FL", "front-right": "FR", "front-center": "FC", "l
 SOURCES = [("same", "Same channel"), ("left", "Left"), ("right", "Right"), ("mono", "Mono (L+R)"),
            ("all", "All channels"), ("off", "Off")]
 
-DEFAULT_BANDS = [{"f": float(f), "g": 0.0, "q": EQ_Q} for f in EQ_FREQS]
+# t = target level the user sets (where the point is drawn); g = filter gain solved so the curve hits t.
+DEFAULT_BANDS = [{"f": float(f), "t": 0.0, "g": 0.0, "q": EQ_Q} for f in EQ_FREQS]
 DEFAULT_CHANNEL = {"src": "same", "hp": FREQ_MIN, "lp": FREQ_MAX, "db": 0.0, "delay_ms": 0.0, "invert": False}
 
 DEFAULTS = {
@@ -348,6 +350,33 @@ def peaking_response(freqs, bands):
     return out
 
 
+def solve_gains(bands, iterations=40):
+    """Set each band's filter gain so the combined curve passes through every band's target level.
+
+    Neighbouring peaking filters overlap and add up, so gain == target would overshoot between and
+    past the points. A few rounds of correcting each gain by its error at its own frequency converge
+    quickly because each filter dominates at its own centre.
+    """
+    freqs = [b["f"] for b in bands]
+    targets = [float(b["t"]) for b in bands]
+    # Keep gains sane: steps steeper than octave-wide filters can make would otherwise be "solved" with
+    # huge opposing gains (wasted headroom, ringing). Better to miss a very steep step by a little.
+    lo_all, hi_all = min(targets) - 3, max(targets) + 3
+    bounds = [(max(t - 6, lo_all), min(t + 6, hi_all)) for t in targets]
+    for b, t in zip(bands, targets):
+        b["g"] = t
+    for _ in range(iterations):
+        resp = peaking_response(freqs, bands)
+        worst = 0.0
+        for b, r, t, (lo, hi) in zip(bands, resp, targets, bounds):
+            err = t - r
+            worst = max(worst, abs(err))
+            b["g"] = min(max(b["g"] + 0.8 * err, lo), hi)
+        if worst < 0.05:
+            break
+    return bands
+
+
 class FFT:
     """Small radix-2 FFT so the spectrum works without numpy."""
 
@@ -566,8 +595,16 @@ def normalize(values):
     v = migrate(values)
     s = clone(DEFAULTS)
     s.update({k: clone(x) for k, x in v.items() if k in DEFAULTS or k == "profile"})
-    bands = [dict(DEFAULT_BANDS[i], **b) for i, b in enumerate(list(s["bands"])[:10])]
+    bands = []
+    for i, b in enumerate(list(s["bands"])[:10]):
+        nb = dict(DEFAULT_BANDS[i], **b)
+        if "t" not in b:  # settings from before targets: the old gain was the user's intent
+            nb["t"] = float(b.get("g", 0.0))
+        if abs(nb["q"] - OLD_EQ_Q) < 1e-6:
+            nb["q"] = EQ_Q
+        bands.append(nb)
     s["bands"] = bands + clone(DEFAULT_BANDS[len(bands):])
+    solve_gains(s["bands"])
     if not isinstance(s["channels"], dict):
         s["channels"] = {}
     return s
@@ -617,6 +654,15 @@ def fmt_hz(f):
     return f"{f / 1000:.1f} kHz" if f >= 1000 else f"{f:.0f} Hz"
 
 
+def q_to_octaves(q):
+    """Bandwidth in octaves of a peaking filter with this Q (RBJ definition)."""
+    return 2 / math.log(2) * math.asinh(1 / (2 * q))
+
+
+def octaves_to_q(n):
+    return 1 / (2 * math.sinh(math.log(2) / 2 * n))
+
+
 def to_log(f):
     return math.log10(f)
 
@@ -639,6 +685,7 @@ class EqGraph(Gtk.DrawingArea):
         self.selected = 0
         self.drag_band = None
         self.drag_start = (0, 0, 0, 0)
+        self.drawing = None  # (x, y) of the last pointer position while painting the curve
         self.curve_cache = None
         self.set_draw_func(self.draw)
         self.set_focusable(True)
@@ -646,7 +693,7 @@ class EqGraph(Gtk.DrawingArea):
         drag = Gtk.GestureDrag()
         drag.connect("drag-begin", self.on_drag_begin)
         drag.connect("drag-update", self.on_drag_update)
-        drag.connect("drag-end", lambda *_: setattr(self, "drag_band", None))
+        drag.connect("drag-end", self.on_drag_end)
         self.add_controller(drag)
         click = Gtk.GestureClick()
         click.connect("pressed", self.on_click)
@@ -673,30 +720,64 @@ class EqGraph(Gtk.DrawingArea):
         w, h = self.get_width(), self.get_height()
         best, dist = None, 14.0
         for i, b in enumerate(self.win.s["bands"]):
-            d = math.hypot(self.x_of(b["f"], w) - x, self.y_of(b["g"], h) - y)
+            d = math.hypot(self.x_of(b["f"], w) - x, self.y_of(b["t"], h) - y)
             if d < dist:
                 best, dist = i, d
         return best
 
     # interaction
+    def clamp_db(self, y, h):
+        return round(min(max(self.db_of(y, h), -self.DB_RANGE), self.DB_RANGE) * 2) / 2
+
     def on_drag_begin(self, gesture, x, y):
         self.grab_focus()
         i = self.band_at(x, y)
         self.drag_band = i
-        if i is not None:
+        self.drag_start = (x, y, 0, 0)
+        if i is not None:  # move one point
             self.select(i)
-            b = self.win.s["bands"][i]
-            self.drag_start = (x, y, b["f"], b["g"])
+        else:  # paint: every band the pointer sweeps over snaps to it
+            self.drawing = (x, y)
+            self.paint(x, y, x, y)
 
     def on_drag_update(self, gesture, dx, dy):
+        x0, y0, _, _ = self.drag_start
+        x, y = x0 + dx, y0 + dy
+        if self.drawing is not None:
+            lx, ly = self.drawing
+            self.paint(lx, ly, x, y)
+            self.drawing = (x, y)
+            return
         if self.drag_band is None:
             return
         w, h = self.get_width(), self.get_height()
-        x0, y0, _f0, _g0 = self.drag_start
         b = self.win.s["bands"][self.drag_band]
-        b["f"] = round(self.f_of(x0 + dx, w), 1)
-        b["g"] = round(min(max(self.db_of(y0 + dy, h), -self.DB_RANGE), self.DB_RANGE) * 2) / 2
+        b["f"] = round(self.f_of(x, w), 1)
+        b["t"] = self.clamp_db(y, h)
         self.win.on_bands_changed()
+
+    def on_drag_end(self, *_):
+        self.drag_band = None
+        self.drawing = None
+
+    def paint(self, x1, y1, x2, y2):
+        """Set the target of every band between x1 and x2 (either direction) from the line y1→y2."""
+        w, h = self.get_width(), self.get_height()
+        lo, hi = min(x1, x2), max(x1, x2)
+        changed = False
+        for i, b in enumerate(self.win.s["bands"]):
+            bx = self.x_of(b["f"], w)
+            near = abs(bx - x2) < w / (2 * len(EQ_FREQS))  # also catch the band under a still pointer
+            if lo - 1 <= bx <= hi + 1 or near:
+                frac = 0 if hi == lo else (bx - x1) / (x2 - x1)
+                y = y2 if near and not (lo - 1 <= bx <= hi + 1) else y1 + (y2 - y1) * min(max(frac, 0), 1)
+                t = self.clamp_db(y, h)
+                if b["t"] != t:
+                    b["t"] = t
+                    changed = True
+                    self.selected = i
+        if changed:
+            self.win.on_bands_changed()
 
     def on_click(self, gesture, n_press, x, y):
         i = self.band_at(x, y)
@@ -704,12 +785,13 @@ class EqGraph(Gtk.DrawingArea):
             return
         self.select(i)
         if n_press == 2:  # double-click: flatten band
-            self.win.s["bands"][i]["g"] = 0.0
+            self.win.s["bands"][i]["t"] = 0.0
             self.win.on_bands_changed()
 
     def on_scroll(self, ctrl, dx, dy):
         b = self.win.s["bands"][self.selected]
-        b["q"] = round(min(max(b["q"] * (0.9 if dy > 0 else 1.1), 0.1), 10.0), 2)
+        # scroll up = wider, down = narrower (lower Q is wider)
+        b["q"] = round(min(max(b["q"] * (1.1 if dy > 0 else 0.9), octaves_to_q(4.0)), octaves_to_q(0.1)), 3)
         self.win.on_bands_changed()
         return True
 
@@ -793,7 +875,7 @@ class EqGraph(Gtk.DrawingArea):
 
         # band handles
         for i, b in enumerate(self.win.s["bands"]):
-            x, y = self.x_of(b["f"], w), self.y_of(b["g"], h)
+            x, y = self.x_of(b["f"], w), self.y_of(b["t"], h)
             r = 7 if i == self.selected else 5
             cr.arc(x, y, r, 0, 2 * math.pi)
             cr.set_source_rgba(accent.red, accent.green, accent.blue, 1 if i == self.selected else 0.75)
@@ -900,7 +982,7 @@ class Window(Adw.ApplicationWindow):
 
         # ---- right column: EQ, 3D
         g = Adw.PreferencesGroup(title="Equalizer",
-                                 description="Drag points to shape the curve, scroll to change width, double-click to reset")
+                                 description="Drag to shape the curve · scroll to widen · double-click to reset")
         right.append(g)
         hdr = Gtk.Box(spacing=6, valign=Gtk.Align.CENTER)
         self.spectrum_btn = Gtk.ToggleButton(label="Spectrum", tooltip_text="Show the live output spectrum")
@@ -911,15 +993,21 @@ class Window(Adw.ApplicationWindow):
         hdr.append(self.presets)
         g.set_header_suffix(hdr)
         self.eq = EqGraph(self)
-        frame = Gtk.Frame(child=self.eq, css_classes=["view"])
-        g.add(frame)
-        band_box = Gtk.Box(spacing=12, margin_top=8, halign=Gtk.Align.CENTER)
-        self.band_label = Gtk.Label(css_classes=["heading"], width_chars=7)
-        band_box.append(self.band_label)
+        # Graph and band controls share one raised surface.
+        eq_card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, css_classes=["card"], overflow=Gtk.Overflow.HIDDEN)
+        eq_card.append(self.eq)
+        eq_card.append(Gtk.Separator())
+        band_row = Gtk.Box(spacing=12, margin_top=10, margin_bottom=10, margin_start=14, margin_end=10)
+        self.band_label = Gtk.Label(css_classes=["heading"], xalign=0, hexpand=True)
+        band_row.append(self.band_label)
+        band_box = Gtk.Box(spacing=8, halign=Gtk.Align.END)
+        band_row.append(band_box)
+        eq_card.append(band_row)
+        g.add(eq_card)
         self.spin_f = self.spin(band_box, "Freq", FREQ_MIN, FREQ_MAX, 1, 0, "f")
-        self.spin_g = self.spin(band_box, "Gain", -15, 15, 0.5, 1, "g")
-        self.spin_q = self.spin(band_box, "Q", 0.1, 10, 0.05, 2, "q")
-        g.add(band_box)
+        self.spin_g = self.spin(band_box, "Gain", -15, 15, 0.5, 1, "t")
+        self.spin_q = self.spin(band_box, "Width", 0.1, 4.0, 0.1, 1, "q", to_ui=q_to_octaves, from_ui=octaves_to_q,
+                                tip="How wide the band is, in octaves. Scroll over the graph to change it")
 
         g = Adw.PreferencesGroup(title="3D", description="Best sitting centred, about an arm's length away")
         right.append(g)
@@ -982,16 +1070,19 @@ class Window(Adw.ApplicationWindow):
         self.loaders.append(load)
         return row
 
-    def spin(self, box, label, lo, hi, step, digits, key):
-        box.append(Gtk.Label(label=label, css_classes=["dim-label"]))
+    def spin(self, box, label, lo, hi, step, digits, key, to_ui=None, from_ui=None, tip=None):
+        box.append(Gtk.Label(label=label, css_classes=["dim-label"], margin_start=6, tooltip_text=tip))
         sp = Gtk.SpinButton.new_with_range(lo, hi, step)
         sp.set_digits(digits)
         sp.set_width_chars(6 if key == "f" else 4)
+        sp.set_tooltip_text(tip)
+        sp.to_ui = to_ui or (lambda v: v)
 
         def changed(s):
             if self.building:
                 return
-            self.s["bands"][self.eq.selected][key] = s.get_value()
+            v = s.get_value()
+            self.s["bands"][self.eq.selected][key] = from_ui(v) if from_ui else v
             self.on_bands_changed(from_spin=True)
 
         sp.connect("value-changed", changed)
@@ -1016,7 +1107,7 @@ class Window(Adw.ApplicationWindow):
         self.building = was
 
     def sync_preset(self):
-        gains = [b["g"] for b in self.s["bands"]]
+        gains = [b["t"] for b in self.s["bands"]]
         default_shape = all(abs(b["f"] - f) < 0.5 and abs(b["q"] - EQ_Q) < 0.01
                             for b, f in zip(self.s["bands"], EQ_FREQS))
         match = 0
@@ -1189,6 +1280,9 @@ class Window(Adw.ApplicationWindow):
     # -- EQ
 
     def on_bands_changed(self, from_spin=False):
+        solve_gains(self.s["bands"])
+        b = self.s["bands"][self.eq.selected]
+        self.band_label.set_text(f"Band {self.eq.selected + 1}  ·  {fmt_hz(b['f'])}")
         self.eq.invalidate()
         if not from_spin:
             was, self.building = self.building, True
@@ -1199,11 +1293,11 @@ class Window(Adw.ApplicationWindow):
 
     def on_band_selected(self, i):
         b = self.s["bands"][i]
-        self.band_label.set_text(f"Band {i + 1}")
+        self.band_label.set_text(f"Band {i + 1}  ·  {fmt_hz(b['f'])}")
         was, self.building = self.building, True
         self.spin_f.set_value(b["f"])
-        self.spin_g.set_value(b["g"])
-        self.spin_q.set_value(b["q"])
+        self.spin_g.set_value(b["t"])
+        self.spin_q.set_value(self.spin_q.to_ui(b["q"]))
         self.building = was
 
     def on_preset(self, dd, _):
@@ -1211,7 +1305,7 @@ class Window(Adw.ApplicationWindow):
         if self.building or idx in (0, Gtk.INVALID_LIST_POSITION):
             return
         gains = PRESETS[list(PRESETS)[idx - 1]]
-        self.s["bands"] = [{"f": float(f), "g": float(g), "q": EQ_Q} for f, g in zip(EQ_FREQS, gains)]
+        self.s["bands"] = [{"f": float(f), "t": float(g), "g": float(g), "q": EQ_Q} for f, g in zip(EQ_FREQS, gains)]
         self.on_bands_changed()
 
     def on_spectrum_toggled(self, btn):
