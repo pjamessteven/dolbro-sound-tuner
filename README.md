@@ -12,7 +12,7 @@
 
 
 Sound Tuner is a system-wide EQ, crossover and speaker tuner for Linux
-desktops running PipeWire. It adds a virtual output, **Sound Tuner**, in
+devices running PipeWire. It adds a virtual output, **Sound Tuner**, in
 front of any sound device, from a laptop's built-in speakers to a stereo pair
 with a sub or a full 7.1 setup, and every app plays through it.
 
@@ -99,7 +99,7 @@ Installed for you by `install.sh`:
 - The ZaMaximX2 limiter from [zam-plugins](https://github.com/zamaudio/zam-plugins)
 - PipeWire's LV2 support for filter-chain
 
-You need a desktop already running PipeWire with WirePlumber, which is the
+You need a Linux device already running PipeWire with WirePlumber, which is the
 default on current Fedora, Ubuntu, Debian and Arch. The Fedora package names
 are tested; on other distros, if a package name has changed, the script tells
 you what's missing so you can install it yourself.
