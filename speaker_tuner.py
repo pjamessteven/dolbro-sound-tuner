@@ -1041,6 +1041,7 @@ class Window(Adw.ApplicationWindow):
             phone.add_setter(self.side_box, side, 12)
         phone.add_setter(self.split, "min-sidebar-width", 280)
         self.add_breakpoint(phone)
+        self.phone_bp = phone
 
         # 3D and Loudness: stacked, or side by side on very wide windows
         self.lower = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18, homogeneous=False)
@@ -1048,6 +1049,7 @@ class Window(Adw.ApplicationWindow):
         g = Adw.PreferencesGroup(title="3D", description="Best sitting centred, about an arm's length away",
                                  hexpand=True, valign=Gtk.Align.START)
         self.lower.append(g)
+        self.spatial_group = g
         self.spatial_row = Adw.SwitchRow(title="Enable 3D")
         self.spatial_row.connect("notify::active", self.on_spatial)
         g.add(self.spatial_row)
@@ -1061,7 +1063,10 @@ class Window(Adw.ApplicationWindow):
             g.add(r)
         self.loudness_group.set_hexpand(True)
         self.loudness_group.set_valign(Gtk.Align.START)
-        self.lower.append(self.loudness_group)
+        # Loudness first on desktop; 3D first on phones (breakpoints can't reorder, so swap on apply/unapply)
+        self.lower.prepend(self.loudness_group)
+        self.phone_bp.connect("apply", lambda *_: self.lower.reorder_child_after(self.loudness_group, self.spatial_group))
+        self.phone_bp.connect("unapply", lambda *_: self.lower.reorder_child_after(self.spatial_group, self.loudness_group))
         wide = Adw.Breakpoint.new(Adw.BreakpointCondition.parse("min-width: 1400sp"))
         wide.add_setter(self.lower, "orientation", Gtk.Orientation.HORIZONTAL)
         wide.add_setter(self.lower, "homogeneous", True)
