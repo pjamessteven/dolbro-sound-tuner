@@ -43,25 +43,6 @@ with a sub or a full 7.1 setup, and every app plays through it.
 - **No dropouts:** changes apply to the running filter live.
 - **Tiny:** one Python file and one readable PipeWire config.
 
-## Requirements
-
-- PipeWire with `pipewire-pulse` and WirePlumber (the default on most current
-  distros), plus `pw-cli`, `pw-dump`, `pw-record` and `pactl`.
-- Python 3 with GObject introspection, GTK 4 (4.10+) and libadwaita 1.5 or
-  newer.
-- The **ZaMaximX2** LV2 plugin from [zam-plugins](https://github.com/zamaudio/zam-plugins).
-- PipeWire's **LV2 support for filter-chain**. Since PipeWire 1.4 some distros
-  package it separately.
-
-| Distro | Packages |
-|---|---|
-| Fedora | `python3-gobject gtk4 libadwaita lv2-zam-plugins pipewire-module-filter-chain-lv2` |
-| Debian / Ubuntu | `python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 zam-plugins` |
-| Arch | `python-gobject gtk4 libadwaita zam-plugins-lv2` |
-
-Package names change between releases, so check your distro if one isn't
-found. The app shows a banner naming anything that's missing.
-
 ## Install
 
 ```sh
@@ -70,19 +51,33 @@ cd dolbro-speaker-tuner
 ./install.sh
 ```
 
-This installs for your user only, with no root needed. Open **Speaker Tuner**,
-pick your output device, and click **Load** in the banner. Audio restarts
-once to load the filter. Changing to a device with a different channel layout
-needs one more restart, which the app offers.
+The script installs any missing dependencies with your package manager (dnf,
+apt or pacman). It shows the exact command and asks before using `sudo`. It
+then installs the app for your user only.
 
-To uninstall:
+Open **Speaker Tuner**, pick your output device, and click **Load** in the
+banner. Audio restarts once to load the filter.
 
-```sh
-./install.sh --uninstall
-```
+| Option | What it does |
+|---|---|
+| `--yes` | install dependencies without asking |
+| `--no-deps` | skip dependencies, install the app only |
+| `--dry-run` | show what would be installed, change nothing |
+| `--uninstall` | remove the app and the PipeWire filter (keeps your presets) |
 
-That removes the app and the PipeWire filter. Saved settings and profiles stay
-in `~/.config/speaker-tuner/` until you delete them.
+### Dependencies
+
+Installed for you by `install.sh`:
+
+- PipeWire tools: `pw-cli`, `pw-dump`, `pw-record` and `pactl`
+- Python 3 with GTK 4 and libadwaita 1.5+
+- The ZaMaximX2 limiter from [zam-plugins](https://github.com/zamaudio/zam-plugins)
+- PipeWire's LV2 support for filter-chain
+
+You need a desktop already running PipeWire with WirePlumber, which is the
+default on current Fedora, Ubuntu, Debian and Arch. The Fedora package names
+are tested; on other distros, if a package name has changed, the script tells
+you what's missing so you can install it yourself.
 
 ## How it works
 
