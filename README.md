@@ -1,6 +1,10 @@
-# <img src="data/icons/io.github.pjamessteven.SpeakerTuner.svg" width="56" align="center" alt=""> Dolbro™ Speaker Tuner
+<p align="center">
+  <img src="data/icons/io.github.pjamessteven.SpeakerTuner.svg" width="128" alt="Speaker Tuner icon">
+</p>
 
-**Get the most out of your shitty laptop speakers, or finely tune your audiophilic soundsystem.**
+<h1 align="center">Dolbro™ Speaker Tuner</h1>
+
+<p align="center"><b>Get the most out of your shitty laptop speakers, or finely tune your audiophilic soundsystem.</b></p>
 
 Speaker Tuner is a system-wide EQ, crossover and speaker tuner for Linux
 desktops running PipeWire. It adds a virtual output, **Speaker Tuner**, in
