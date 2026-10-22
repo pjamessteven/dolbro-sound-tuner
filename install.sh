@@ -161,6 +161,10 @@ fi
 # ---------------------------------------------------------------- app
 
 install -Dm755 "$SRC/speaker_tuner.py" "$SHARE/speaker-tuner/speaker_tuner.py"
+mkdir -p "$SHARE/speaker-tuner/locale"
+for f in "$SRC"/locale/*.json; do
+    case "$f" in */strings.json) ;; *) install -m644 "$f" "$SHARE/speaker-tuner/locale/" ;; esac
+done
 mkdir -p "$BIN"
 cat > "$BIN/speaker-tuner" <<WRAP
 #!/bin/sh

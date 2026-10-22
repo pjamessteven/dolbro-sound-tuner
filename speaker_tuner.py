@@ -23,7 +23,33 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk  # noqa: E402
+gi.require_version("PangoCairo", "1.0")
+from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk, Pango, PangoCairo  # noqa: E402
+
+LOCALE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "locale")
+
+
+def load_translations():
+    """English -> translated strings for the first system language we have a file for."""
+    for lang in GLib.get_language_names():
+        base = lang.split(".")[0].split("@")[0]
+        if base in ("C", "POSIX") or base.startswith("en"):
+            return {}
+        path = os.path.join(LOCALE_DIR, base + ".json")
+        if os.path.exists(path):
+            try:
+                with open(path, encoding="utf-8") as f:
+                    return json.load(f)
+            except (OSError, json.JSONDecodeError):
+                return {}
+    return {}
+
+
+TRANSLATIONS = load_translations()
+
+
+def _(text):
+    return TRANSLATIONS.get(text) or text
 
 APP_ID = "io.github.pjamessteven.SpeakerTuner"
 VERSION = "0.3.0"
@@ -654,7 +680,7 @@ def fmt_hz(f):
 
 
 def band_text(i, b, with_gain=False):
-    text = f"Band {i + 1}  ·  {fmt_hz(b['f'])}"
+    text = _("Band {number}").format(number=i + 1) + f"  ·  {fmt_hz(b['f'])}"
     return f"{text}  ·  {b['t']:+.1f} dB" if with_gain else text
 
 
@@ -809,6 +835,14 @@ class EqGraph(Gtk.DrawingArea):
         self.queue_draw()
 
     # drawing
+    def label(self, cr, x, baseline, text):
+        """Small axis label via Pango (proper font fallback; cairo's toy text API has none)."""
+        layout = PangoCairo.create_layout(cr)
+        layout.set_font_description(Pango.FontDescription.from_string("Sans 8"))
+        layout.set_text(text, -1)
+        cr.move_to(x, baseline - layout.get_baseline() / Pango.SCALE)
+        PangoCairo.show_layout(cr, layout)
+
     def draw(self, area, cr, w, h):
         fg = self.get_color()
         try:
@@ -822,8 +856,6 @@ class EqGraph(Gtk.DrawingArea):
         cr.rectangle(0, 0, w, h)
         cr.fill()
         cr.set_line_width(1)
-        cr.select_font_face("Sans")
-        cr.set_font_size(10)
         for f in (50, 100, 200, 500, 1000, 2000, 5000, 10000):
             x = round(self.x_of(f, w)) + 0.5
             cr.set_source_rgba(fg.red, fg.green, fg.blue, 0.08)
@@ -831,8 +863,7 @@ class EqGraph(Gtk.DrawingArea):
             cr.line_to(x, h)
             cr.stroke()
             cr.set_source_rgba(fg.red, fg.green, fg.blue, 0.4)
-            cr.move_to(x + 3, h - 4)
-            cr.show_text(f"{f // 1000}k" if f >= 1000 else str(f))
+            self.label(cr, x + 3, h - 4, f"{f // 1000}k" if f >= 1000 else str(f))
         for db in (-12, -6, 0, 6, 12):
             y = round(self.y_of(db, h)) + 0.5
             cr.set_source_rgba(fg.red, fg.green, fg.blue, 0.16 if db == 0 else 0.08)
@@ -840,8 +871,7 @@ class EqGraph(Gtk.DrawingArea):
             cr.line_to(w, y)
             cr.stroke()
             cr.set_source_rgba(fg.red, fg.green, fg.blue, 0.4)
-            cr.move_to(3, y - 3)
-            cr.show_text(f"{db:+d}" if db else "0 dB")
+            self.label(cr, 3, y - 3, f"{db:+d}" if db else "0 dB")
 
         # live spectrum (own scale: SPEC_FLOOR..0 dBFS over the full height)
         an = self.win.analyzer
@@ -893,7 +923,7 @@ class EqGraph(Gtk.DrawingArea):
 
 class Window(Adw.ApplicationWindow):
     def __init__(self, app):
-        super().__init__(application=app, title="Sound Tuner", default_width=1180, default_height=820)
+        super().__init__(application=app, title=_("Sound Tuner"), default_width=1180, default_height=820)
         self.set_size_request(360, 480)
         self.s = load_settings()
         self.node_id = None
@@ -910,7 +940,7 @@ class Window(Adw.ApplicationWindow):
         if not self.s["target_sink"] or self.s["target_sink"] not in [n for n, _, _ in self.sinks]:
             if not self.s["target_sink"]:
                 self.s["target_sink"] = self.pick_initial_sink()
-        for n, _, pos in self.sinks:
+        for n, _desc, pos in self.sinks:
             if n == self.s["target_sink"]:
                 self.s["target_positions"] = pos
 
@@ -920,7 +950,7 @@ class Window(Adw.ApplicationWindow):
         side_view = Adw.ToolbarView()
         side_header = Adw.HeaderBar(show_title=False)
         # When the sidebar is an overlay (narrow windows/phones) it needs its own way back to the EQ.
-        self.sidebar_close = Gtk.ToggleButton(icon_name="sidebar-show-symbolic", tooltip_text="Hide settings",
+        self.sidebar_close = Gtk.ToggleButton(icon_name="sidebar-show-symbolic", tooltip_text=_("Hide settings"),
                                               visible=False)
         side_header.pack_start(self.sidebar_close)
         side_view.add_top_bar(side_header)
@@ -931,7 +961,7 @@ class Window(Adw.ApplicationWindow):
 
         main_view = Adw.ToolbarView()
         header = Adw.HeaderBar()
-        self.sidebar_btn = sidebar_btn = Gtk.ToggleButton(icon_name="sidebar-show-symbolic", tooltip_text="Show settings", visible=False)
+        self.sidebar_btn = sidebar_btn = Gtk.ToggleButton(icon_name="sidebar-show-symbolic", tooltip_text=_("Show settings"), visible=False)
         for btn in (sidebar_btn, self.sidebar_close):
             self.split.bind_property("show-sidebar", btn, "active",
                                      GObject.BindingFlags.BIDIRECTIONAL | GObject.BindingFlags.SYNC_CREATE)
@@ -950,55 +980,55 @@ class Window(Adw.ApplicationWindow):
 
 
         # ---- left column: presets, output, loudness, channels
-        self.presets_group = Adw.PreferencesGroup(title="Presets")
+        self.presets_group = Adw.PreferencesGroup(title=_("Presets"))
         left.append(self.presets_group)
         acts = Gtk.Box(spacing=6, valign=Gtk.Align.CENTER)
-        for icon, tip, cb in (("list-add-symbolic", "Save the current sound as a new preset", self.on_save_profile),
-                              ("edit-undo-symbolic", "Reset to defaults", self.on_reset)):
+        for icon, tip, cb in (("list-add-symbolic", _("Save the current sound as a new preset"), self.on_save_profile),
+                              ("edit-undo-symbolic", _("Reset to defaults"), self.on_reset)):
             btn = Gtk.Button(icon_name=icon, tooltip_text=tip, css_classes=["flat"])
             btn.connect("clicked", cb)
             acts.append(btn)
         self.presets_group.set_header_suffix(acts)
         self.preset_rows = []
 
-        g = Adw.PreferencesGroup(title="Output")
+        g = Adw.PreferencesGroup(title=_("Output"))
         left.append(g)
-        self.device_row = Adw.ComboRow(title="Device")
+        self.device_row = Adw.ComboRow(title=_("Device"))
         self.device_row.connect("notify::selected", self.on_device)
         g.add(self.device_row)
-        self.default_row = Adw.SwitchRow(title="Use Sound Tuner", subtitle="Make it the default output")
+        self.default_row = Adw.SwitchRow(title=_("Use Sound Tuner"), subtitle=_("Make it the default output"))
         self.default_row.connect("notify::active", self.on_default_toggled)
         g.add(self.default_row)
 
-        g = self.loudness_group = Adw.PreferencesGroup(title="Loudness")
+        g = self.loudness_group = Adw.PreferencesGroup(title=_("Loudness"))
         # GNOME's volume slider normally stops at 100%; this lets it go to ~150%.
         schema = Gio.SettingsSchemaSource.get_default().lookup("org.gnome.desktop.sound", True)
         if schema and schema.has_key("allow-volume-above-100-percent"):
             self.sound_settings = Gio.Settings(schema_id="org.gnome.desktop.sound")
-            over = Adw.SwitchRow(title="Allow volume above 100%")
+            over = Adw.SwitchRow(title=_("Allow volume above 100%"))
             self.sound_settings.bind("allow-volume-above-100-percent", over, "active", Gio.SettingsBindFlags.DEFAULT)
             g.add(over)
-        g.add(self.slider("Boost", "Louder without clipping", 0, 20, 0.5, lambda v: f"{v:+.1f} dB", "boost_db"))
-        g.add(self.slider("Ceiling", "Maximum output level", -6, 0, 0.1, lambda v: f"{v:.1f} dBFS", "ceiling_db"))
-        g.add(self.slider("Limiter", "Release time: longer is smoother, shorter is punchier", 1, 100, 1,
+        g.add(self.slider(_("Boost"), _("Louder without clipping"), 0, 20, 0.5, lambda v: f"{v:+.1f} dB", "boost_db"))
+        g.add(self.slider(_("Ceiling"), _("Maximum output level"), -6, 0, 0.1, lambda v: f"{v:.1f} dBFS", "ceiling_db"))
+        g.add(self.slider(_("Limiter"), _("Release time: longer is smoother, shorter is punchier"), 1, 100, 1,
                           lambda v: f"{v:.0f} ms", "release_ms"))
-        g.add(self.slider("Overdrive", "Extra gain that distorts", 0, 18, 0.5,
+        g.add(self.slider(_("Overdrive"), _("Extra gain that distorts"), 0, 18, 0.5,
                           lambda v: f"{v:+.1f} dB", "drive_db"))
 
         self.channels_group = Adw.PreferencesGroup(
-            title="Channels", description="Routing and crossovers per speaker")
+            title=_("Channels"), description=_("Routing and crossovers per speaker"))
         left.append(self.channels_group)
-        self.setup_dd = Gtk.DropDown(valign=Gtk.Align.CENTER, tooltip_text="Apply a channel setup")
+        self.setup_dd = Gtk.DropDown(valign=Gtk.Align.CENTER, tooltip_text=_("Apply a channel setup"))
         self.setup_dd.connect("notify::selected", self.on_setup)
         self.channels_group.set_header_suffix(self.setup_dd)
         self.channel_rows = []
 
         # ---- right column: EQ, 3D
-        g = self.eq_group = Adw.PreferencesGroup(title="Equalizer",
-                                 description="Drag to shape · scroll to widen · double-click to reset")
+        g = self.eq_group = Adw.PreferencesGroup(title=_("Equalizer"),
+                                 description=_("Drag to shape · scroll to widen · double-click to reset"))
         right.append(g)
         hdr = Gtk.Box(spacing=6, valign=Gtk.Align.CENTER)
-        self.presets = Gtk.DropDown.new_from_strings(["Custom"] + list(PRESETS))
+        self.presets = Gtk.DropDown.new_from_strings([_("Custom")] + [_(n) for n in PRESETS])
         self.presets.connect("notify::selected", self.on_preset)
         hdr.append(self.presets)
         g.set_header_suffix(hdr)
@@ -1018,10 +1048,10 @@ class Window(Adw.ApplicationWindow):
         band_row.append(band_box)
         eq_card.append(band_row)
         g.add(eq_card)
-        self.spin_f = self.spin(band_box, "Freq", FREQ_MIN, FREQ_MAX, 1, 0, "f")
-        self.spin_g = self.spin(band_box, "Gain", -15, 15, 0.5, 1, "t")
-        self.spin_q = self.spin(band_box, "Width", 0.1, 4.0, 0.1, 1, "q", to_ui=q_to_octaves, from_ui=octaves_to_q,
-                                tip="How wide the band is, in octaves. Scroll over the graph to change it")
+        self.spin_f = self.spin(band_box, _("Freq"), FREQ_MIN, FREQ_MAX, 1, 0, "f")
+        self.spin_g = self.spin(band_box, _("Gain"), -15, 15, 0.5, 1, "t")
+        self.spin_q = self.spin(band_box, _("Width"), 0.1, 4.0, 0.1, 1, "q", to_ui=q_to_octaves, from_ui=octaves_to_q,
+                                tip=_("How wide the band is, in octaves. Scroll over the graph to change it"))
 
         # Phone layout: settings live in the slide-out sidebar, band controls stack, tighter margins.
         # Adwaita applies the last matching breakpoint, so they go from widest to narrowest.
@@ -1060,17 +1090,17 @@ class Window(Adw.ApplicationWindow):
         # 3D and Loudness: stacked, or side by side on very wide windows
         self.lower = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18, homogeneous=False)
         right.append(self.lower)
-        g = Adw.PreferencesGroup(title="3D Virtual Surround", hexpand=True, valign=Gtk.Align.START)
+        g = Adw.PreferencesGroup(title=_("3D Virtual Surround"), hexpand=True, valign=Gtk.Align.START)
         self.lower.append(g)
         self.spatial_group = g
-        self.spatial_row = Adw.SwitchRow(title="Enable 3D")
+        self.spatial_row = Adw.SwitchRow(title=_("Enable 3D"))
         self.spatial_row.connect("notify::active", self.on_spatial)
         g.add(self.spatial_row)
         self.spatial_sliders = [
-            self.slider("Stereo width", "100% is normal", 0, 200, 5, lambda v: f"{v:.0f}%", "width_pct"),
-            self.slider("3D amount", "Spreads sound past the speakers", 0, 100, 5,
+            self.slider(_("Stereo width"), _("100% is normal"), 0, 200, 5, lambda v: f"{v:.0f}%", "width_pct"),
+            self.slider(_("3D amount"), _("Spreads sound past the speakers"), 0, 100, 5,
                         lambda v: f"{v:.0f}%", "xtc_pct"),
-            self.slider("3D delay", "Match to your seating distance", 20, 300, 5, lambda v: f"{v:.0f} µs", "xtc_us"),
+            self.slider(_("3D delay"), _("Match to your seating distance"), 20, 300, 5, lambda v: f"{v:.0f} µs", "xtc_us"),
         ]
         for r in self.spatial_sliders:
             g.add(r)
@@ -1153,8 +1183,9 @@ class Window(Adw.ApplicationWindow):
 
     def spin(self, box, label, lo, hi, step, digits, key, to_ui=None, from_ui=None, tip=None):
         pair = Gtk.Box(spacing=6)  # label + spin stay together when the row stacks on phones
-        lab = Gtk.Label(label=label, css_classes=["dim-label"], margin_start=6, tooltip_text=tip, xalign=0)
-        self.spin_labels.add_widget(lab)
+        # ellipsizes (full text in the tooltip) instead of forcing the window wider in long languages
+        lab = Gtk.Label(label=label, css_classes=["dim-label"], margin_start=6, tooltip_text=tip or label, xalign=0,
+                        ellipsize=3)
         pair.append(lab)
         box.append(pair)
         sp = Gtk.SpinButton.new_with_range(lo, hi, step)
@@ -1205,11 +1236,11 @@ class Window(Adw.ApplicationWindow):
         was, self.building = self.building, True
         names = [n for n, _, _ in self.sinks]
         if self.s["target_sink"] and self.s["target_sink"] not in names:
-            self.sinks.append((self.s["target_sink"], f"{self.s['target_sink']} (not connected)",
+            self.sinks.append((self.s["target_sink"], _("{device} (not connected)").format(device=self.s["target_sink"]),
                                self.s["target_positions"]))
         labels = [f"{d} ({len(p)} ch)" if len(p) != 2 else d for _, d, p in self.sinks]
         self.device_row.set_model(Gtk.StringList.new(labels))
-        for i, (n, _, _) in enumerate(self.sinks):
+        for i, (n, _desc, _pos) in enumerate(self.sinks):
             if n == self.s["target_sink"]:
                 self.device_row.set_selected(i)
         self.building = was
@@ -1233,7 +1264,7 @@ class Window(Adw.ApplicationWindow):
             self.presets_group.remove(row)
         self.preset_rows = []
         if not self.profile_names:
-            row = Adw.ActionRow(title="No presets yet", subtitle="Save the current sound with +",
+            row = Adw.ActionRow(title=_("No presets yet"), subtitle=_("Save the current sound with +"),
                                 css_classes=["dim-label"])
             self.presets_group.add(row)
             self.preset_rows.append(row)
@@ -1242,10 +1273,10 @@ class Window(Adw.ApplicationWindow):
             active = name == current
             row = Adw.ActionRow(title=GLib.markup_escape_text(name), activatable=True)
             if active:
-                row.set_subtitle("Active · changes save automatically")
+                row.set_subtitle(_("Active · changes save automatically"))
             tick = Gtk.Image(icon_name="object-select-symbolic", opacity=1 if active else 0)
             row.add_prefix(tick)
-            delete = Gtk.Button(icon_name="user-trash-symbolic", tooltip_text=f"Delete “{name}”",
+            delete = Gtk.Button(icon_name="user-trash-symbolic", tooltip_text=_("Delete “{name}”").format(name=name),
                                 valign=Gtk.Align.CENTER, css_classes=["flat"])
             delete.connect("clicked", lambda _b, n=name: self.on_delete_profile(n))
             row.add_suffix(delete)
@@ -1263,7 +1294,7 @@ class Window(Adw.ApplicationWindow):
         positions = self.s["target_positions"]
         self.setups = setup_presets(positions)
         was, self.building = self.building, True
-        self.setup_dd.set_model(Gtk.StringList.new(["Setup…"] + list(self.setups)))
+        self.setup_dd.set_model(Gtk.StringList.new([_("Setup…")] + [_(n) for n in self.setups]))
         self.setup_dd.set_selected(0)
         self.building = was
         for pos in positions:
@@ -1272,7 +1303,7 @@ class Window(Adw.ApplicationWindow):
             self.channel_rows.append(row)
 
     def channel_row(self, pos):
-        exp = Adw.ExpanderRow(title=CHANNEL_NAMES.get(pos, pos))
+        exp = Adw.ExpanderRow(title=_(CHANNEL_NAMES[pos]) if pos in CHANNEL_NAMES else pos)
 
         def cfg():
             return channel_cfg(self.s, pos)
@@ -1284,7 +1315,7 @@ class Window(Adw.ApplicationWindow):
                 exp.set_subtitle(self.channel_summary(pos))
             return _put
 
-        src = Adw.ComboRow(title="Source", model=Gtk.StringList.new([n for _, n in SOURCES]))
+        src = Adw.ComboRow(title=_("Source"), model=Gtk.StringList.new([_(n) for _k, n in SOURCES]))
 
         def src_changed(row, _):
             if self.building:
@@ -1294,17 +1325,17 @@ class Window(Adw.ApplicationWindow):
 
         src.connect("notify::selected", src_changed)
         exp.add_row(src)
-        exp.add_row(self.slider("High-pass", "Removes sound below this", FREQ_MIN, FREQ_MAX, 1,
-                                lambda v: "Off" if v <= FREQ_MIN + 0.5 else fmt_hz(v),
+        exp.add_row(self.slider(_("High-pass"), _("Removes sound below this"), FREQ_MIN, FREQ_MAX, 1,
+                                lambda v: _("Off") if v <= FREQ_MIN + 0.5 else fmt_hz(v),
                                 get=lambda: cfg()["hp"], put=put("hp"), log=True))
-        exp.add_row(self.slider("Low-pass", "Removes sound above this", FREQ_MIN, FREQ_MAX, 1,
-                                lambda v: "Off" if v >= FREQ_MAX - 0.5 else fmt_hz(v),
+        exp.add_row(self.slider(_("Low-pass"), _("Removes sound above this"), FREQ_MIN, FREQ_MAX, 1,
+                                lambda v: _("Off") if v >= FREQ_MAX - 0.5 else fmt_hz(v),
                                 get=lambda: cfg()["lp"], put=put("lp"), log=True))
-        exp.add_row(self.slider("Level", None, -24, 12, 0.5, lambda v: f"{v:+.1f} dB",
+        exp.add_row(self.slider(_("Level"), None, -24, 12, 0.5, lambda v: f"{v:+.1f} dB",
                                 get=lambda: cfg()["db"], put=put("db")))
-        exp.add_row(self.slider("Delay", "Aligns speakers at different distances", 0, 20, 0.05,
+        exp.add_row(self.slider(_("Delay"), _("Aligns speakers at different distances"), 0, 20, 0.05,
                                 lambda v: f"{v:.2f} ms", get=lambda: cfg()["delay_ms"], put=put("delay_ms")))
-        inv = Adw.SwitchRow(title="Invert polarity")
+        inv = Adw.SwitchRow(title=_("Invert polarity"))
 
         def inv_changed(row, _):
             if self.building:
@@ -1317,7 +1348,8 @@ class Window(Adw.ApplicationWindow):
 
         def load():
             c = cfg()
-            src.set_selected([k for k, _ in SOURCES].index(c["src"]) if c["src"] in [k for k, _ in SOURCES] else 0)
+            keys = [k for k, _n in SOURCES]
+            src.set_selected(keys.index(c["src"]) if c["src"] in keys else 0)
             inv.set_active(bool(c["invert"]))
             exp.set_subtitle(self.channel_summary(pos))
 
@@ -1335,7 +1367,7 @@ class Window(Adw.ApplicationWindow):
 
     def channel_summary(self, pos):
         c = channel_cfg(self.s, pos)
-        parts = [dict(SOURCES)[c["src"]]]
+        parts = [_(dict(SOURCES)[c["src"]])]
         if c["hp"] > FREQ_MIN + 0.5:
             parts.append(f"HP {fmt_hz(c['hp'])}")
         if c["lp"] < FREQ_MAX - 0.5:
@@ -1345,10 +1377,10 @@ class Window(Adw.ApplicationWindow):
         if c["delay_ms"]:
             parts.append(f"{c['delay_ms']:.2f} ms")
         if c["invert"]:
-            parts.append("inverted")
+            parts.append(_("inverted"))
         return " · ".join(parts)
 
-    def on_setup(self, dd, _):
+    def on_setup(self, dd, _pspec):
         idx = dd.get_selected()
         if self.building or idx in (0, Gtk.INVALID_LIST_POSITION):
             return
@@ -1356,7 +1388,7 @@ class Window(Adw.ApplicationWindow):
         self.s["channels"] = self.setups[name]()
         self.sync_ui()
         self.schedule_apply()
-        self.toast(f"Applied “{name}”")
+        self.toast(_("Applied “{name}”").format(name=_(name)))
         was, self.building = self.building, True
         dd.set_selected(0)
         self.building = was
@@ -1432,15 +1464,15 @@ class Window(Adw.ApplicationWindow):
         self.apply_values(self.profiles[name])
         self.s["profile"] = name
         self.fill_profiles(select=name)
-        self.toast(f"Loaded “{name}”")
+        self.toast(_("Loaded “{name}”").format(name=name))
 
     def on_save_profile(self, _btn):
-        entry = Gtk.Entry(placeholder_text="Preset name", activates_default=True)
-        dlg = Adw.AlertDialog(heading="Save as new preset",
-                              body="Changes you make afterwards are saved into it automatically.")
+        entry = Gtk.Entry(placeholder_text=_("Preset name"), activates_default=True)
+        dlg = Adw.AlertDialog(heading=_("Save as new preset"),
+                              body=_("Changes you make afterwards are saved into it automatically."))
         dlg.set_extra_child(entry)
-        dlg.add_response("cancel", "Cancel")
-        dlg.add_response("save", "Save")
+        dlg.add_response("cancel", _("Cancel"))
+        dlg.add_response("save", _("Save"))
         dlg.set_response_appearance("save", Adw.ResponseAppearance.SUGGESTED)
         dlg.set_default_response("save")
         dlg.set_close_response("cancel")
@@ -1456,20 +1488,20 @@ class Window(Adw.ApplicationWindow):
             try:
                 save_profiles(profiles)
             except OSError as e:
-                self.toast(f"Could not save preset: {e}")
+                self.toast(_("Could not save preset: {error}").format(error=e))
                 return
             self.s["profile"] = name
             self.fill_profiles(select=name)
             self.schedule_apply()
-            self.toast(f"Saved “{name}”")
+            self.toast(_("Saved “{name}”").format(name=name))
 
         dlg.connect("response", done)
         dlg.present(self)
 
     def on_delete_profile(self, name):
-        dlg = Adw.AlertDialog(heading=f"Delete “{name}”?", body="Your current sound stays as it is.")
-        dlg.add_response("cancel", "Cancel")
-        dlg.add_response("delete", "Delete")
+        dlg = Adw.AlertDialog(heading=_("Delete “{name}”?").format(name=name), body=_("Your current sound stays as it is."))
+        dlg.add_response("cancel", _("Cancel"))
+        dlg.add_response("delete", _("Delete"))
         dlg.set_response_appearance("delete", Adw.ResponseAppearance.DESTRUCTIVE)
         dlg.set_close_response("cancel")
 
@@ -1483,17 +1515,17 @@ class Window(Adw.ApplicationWindow):
                 self.s.pop("profile", None)
             self.fill_profiles()
             self.schedule_apply()
-            self.toast(f"Deleted “{name}”")
+            self.toast(_("Deleted “{name}”").format(name=name))
 
         dlg.connect("response", done)
         dlg.present(self)
 
     def on_reset(self, _btn):
-        dlg = Adw.AlertDialog(heading="Reset to defaults?",
-                              body="Turns off every effect and resets all channels. "
-                                   "Saved presets and your output device are kept.")
-        dlg.add_response("cancel", "Cancel")
-        dlg.add_response("reset", "Reset")
+        dlg = Adw.AlertDialog(heading=_("Reset to defaults?"),
+                              body=_("Turns off every effect and resets all channels. "
+                                     "Saved presets and your output device are kept."))
+        dlg.add_response("cancel", _("Cancel"))
+        dlg.add_response("reset", _("Reset"))
         dlg.set_response_appearance("reset", Adw.ResponseAppearance.DESTRUCTIVE)
         dlg.set_close_response("cancel")
 
@@ -1501,7 +1533,7 @@ class Window(Adw.ApplicationWindow):
             if response == "reset":
                 self.apply_values({})
                 self.fill_profiles()
-                self.toast("Reset to defaults")
+                self.toast(_("Reset to defaults"))
 
         dlg.connect("response", done)
         dlg.present(self)
@@ -1524,7 +1556,7 @@ class Window(Adw.ApplicationWindow):
                     self.profiles[name] = values
                     save_profiles(self.profiles)
         except OSError as e:
-            self.toast(f"Could not save settings: {e}")
+            self.toast(_("Could not save settings: {error}").format(error=e))
         if self.node_id is not None and not self.banner.get_revealed():
             if not push_live(self.node_id, controls(self.s)):
                 self.refresh_state()
@@ -1539,13 +1571,13 @@ class Window(Adw.ApplicationWindow):
         missing = missing_deps()
         if missing:
             self.node_id = None
-            self.show_banner("Missing: " + ", ".join(missing) + ". See the README to install them.")
+            self.show_banner(_("Missing: {items}. See the README to install them.").format(items=", ".join(missing)))
             return
         self.node_id, names = find_node()
         if self.node_id is None:
-            self.show_banner("Sound Tuner isn't loaded yet", "Load (restarts audio)")
+            self.show_banner(_("Sound Tuner isn't loaded yet"), _("Load (restarts audio)"))
         elif self.needs_restart or not graph_matches(names, self.s["target_positions"]):
-            self.show_banner("Restart audio to apply the change", "Restart audio")
+            self.show_banner(_("Restart audio to apply the change"), _("Restart audio"))
         else:
             self.banner.set_revealed(False)
             push_live(self.node_id, controls(self.s))
@@ -1572,7 +1604,7 @@ class Window(Adw.ApplicationWindow):
         save_settings(self.s)
         self.banner.set_revealed(False)
         self.analyzer.stop()
-        self.toast("Restarting audio…")
+        self.toast(_("Restarting audio…"))
         GLib.timeout_add(50, self._restart)
 
     def _restart(self):
@@ -1586,9 +1618,9 @@ class Window(Adw.ApplicationWindow):
         self.refresh_state()
         self.update_analyzer()
         if self.node_id is None:
-            self.toast("The filter didn't load. Check `journalctl --user -u pipewire`.")
+            self.toast(_("The filter didn't load. Check `journalctl --user -u pipewire`."))
         else:
-            self.toast("Loaded. Restart your music player if it went quiet.")
+            self.toast(_("Loaded. Restart your music player if it went quiet."))
         return GLib.SOURCE_REMOVE
 
     def on_default_toggled(self, row, _):

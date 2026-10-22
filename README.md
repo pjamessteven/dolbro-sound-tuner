@@ -6,6 +6,11 @@
 
 <p align="center"><b>Get the most out of your shitty laptop speakers, or finely tune your audiophilic soundsystem.</b></p>
 
+<!-- languages -->
+<p align="center"><sub><b>English</b> · <a href="translations/README.ar.md">العربية</a> · <a href="translations/README.bn.md">বাংলা</a> · <a href="translations/README.cs.md">Čeština</a> · <a href="translations/README.da.md">Dansk</a> · <a href="translations/README.de.md">Deutsch</a> · <a href="translations/README.el.md">Ελληνικά</a> · <a href="translations/README.es.md">Español</a> · <a href="translations/README.fa.md">فارسی</a> · <a href="translations/README.fi.md">Suomi</a> · <a href="translations/README.fr.md">Français</a> · <a href="translations/README.he.md">עברית</a> · <a href="translations/README.hi.md">हिन्दी</a> · <a href="translations/README.hu.md">Magyar</a> · <a href="translations/README.id.md">Bahasa Indonesia</a> · <a href="translations/README.it.md">Italiano</a> · <a href="translations/README.ja.md">日本語</a> · <a href="translations/README.ko.md">한국어</a> · <a href="translations/README.nb.md">Norsk bokmål</a> · <a href="translations/README.nl.md">Nederlands</a> · <a href="translations/README.pl.md">Polski</a> · <a href="translations/README.pt_BR.md">Português (Brasil)</a> · <a href="translations/README.ro.md">Română</a> · <a href="translations/README.ru.md">Русский</a> · <a href="translations/README.sv.md">Svenska</a> · <a href="translations/README.th.md">ไทย</a> · <a href="translations/README.tr.md">Türkçe</a> · <a href="translations/README.uk.md">Українська</a> · <a href="translations/README.vi.md">Tiếng Việt</a> · <a href="translations/README.zh_CN.md">简体中文</a> · <a href="translations/README.zh_TW.md">繁體中文</a></sub></p>
+<!-- /languages -->
+
+
 Sound Tuner is a system-wide EQ, crossover and speaker tuner for Linux
 desktops running PipeWire. It adds a virtual output, **Sound Tuner**, in
 front of any sound device, from a laptop's built-in speakers to a stereo pair
@@ -129,6 +134,13 @@ while the window is open.
   sound spreads wider than the speakers.
 - **Overdrive** sends clipped audio to your speakers. Use it sparingly on small
   drivers.
+
+## Translations
+
+The app and this README are available in 30 languages. The app follows your
+system language automatically. Translations live in `locale/<language>.json`
+(app) and `translations/README.<language>.md` (docs). Corrections from native
+speakers are very welcome: edit the file and open a pull request.
 
 ## License
 
