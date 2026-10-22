@@ -1048,12 +1048,18 @@ class Window(Adw.ApplicationWindow):
         row = Adw.PreferencesRow(title=title, activatable=False)
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2,
                       margin_top=10, margin_bottom=6, margin_start=12, margin_end=12)
-        top = Gtk.Box(spacing=12)
-        text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
-        text.append(Gtk.Label(label=title, xalign=0))
+        # title, an (i) button explaining it (tooltip on hover, popover on click/tap), then the value
+        top = Gtk.Box(spacing=2)
+        top.append(Gtk.Label(label=title, xalign=0, valign=Gtk.Align.CENTER))
         if tip:
-            text.append(Gtk.Label(label=tip, xalign=0, wrap=True, css_classes=["caption", "dim-label"]))
-        top.append(text)
+            theme = Gtk.IconTheme.get_for_display(Gdk.Display.get_default())
+            icon = "info-outline-symbolic" if theme.has_icon("info-outline-symbolic") else "dialog-information-symbolic"
+            info = Gtk.MenuButton(icon_name=icon, tooltip_text=tip,
+                                  valign=Gtk.Align.CENTER, has_frame=False, css_classes=["circular", "dim-label"])
+            info.set_popover(Gtk.Popover(child=Gtk.Label(label=tip, wrap=True, max_width_chars=32,
+                                                         margin_top=6, margin_bottom=6, margin_start=6, margin_end=6)))
+            top.append(info)
+        top.append(Gtk.Box(hexpand=True))
         val = Gtk.Label(css_classes=["numeric", "dim-label"], xalign=1, valign=Gtk.Align.CENTER)
         top.append(val)
         box.append(top)
