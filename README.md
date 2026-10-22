@@ -28,8 +28,8 @@ with a sub or a full 7.1 setup, and every app plays through it.
 - **3D:** stereo width plus crosstalk cancellation in the style of
   Ambiophonics/RACE, which spreads sound wider than closely spaced speakers
   such as a laptop's.
-- **Profiles:** pick one from the top bar or save the current sound under a
-  name. Changes save into the selected profile as you go.
+- **Presets:** a list at the top of the window. Click one to load it, or save the
+  current sound as a new one. Changes save into the active preset as you go.
 
 ## Why not Easy Effects, JamesDSP or similar?
 

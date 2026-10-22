@@ -827,26 +827,8 @@ class Window(Adw.ApplicationWindow):
             if n == self.s["target_sink"]:
                 self.s["target_positions"] = pos
 
-        # header: profile bar
         view = Adw.ToolbarView()
-        header = Adw.HeaderBar()
-        pbox = Gtk.Box(spacing=6)
-        pbox.append(Gtk.Label(label="Profile", css_classes=["dim-label"]))
-        self.profile_dd = Gtk.DropDown()
-        self.profile_dd.connect("notify::selected", self.on_profile_selected)
-        pbox.append(self.profile_dd)
-        actions = Gtk.Box(css_classes=["linked"])
-        for icon, tip, cb in (("document-save-symbolic", "Save as new profile…", self.on_save_profile),
-                              ("user-trash-symbolic", "Delete profile", self.on_delete_profile),
-                              ("edit-undo-symbolic", "Reset to defaults", self.on_reset)):
-            btn = Gtk.Button(icon_name=icon, tooltip_text=tip)
-            btn.connect("clicked", cb)
-            actions.append(btn)
-            if cb == self.on_delete_profile:
-                self.delete_btn = btn
-        pbox.append(actions)
-        header.pack_start(pbox)
-        view.add_top_bar(header)
+        view.add_top_bar(Adw.HeaderBar())
         self.banner = Adw.Banner()
         self.banner.connect("button-clicked", self.on_reload)
         view.add_top_bar(self.banner)
@@ -873,7 +855,18 @@ class Window(Adw.ApplicationWindow):
         bp.add_setter(left, "width-request", -1)
         self.add_breakpoint(bp)
 
-        # ---- left column: output, loudness, channels
+        # ---- left column: presets, output, loudness, channels
+        self.presets_group = Adw.PreferencesGroup(title="Presets")
+        left.append(self.presets_group)
+        acts = Gtk.Box(spacing=6, valign=Gtk.Align.CENTER)
+        for icon, tip, cb in (("list-add-symbolic", "Save the current sound as a new preset", self.on_save_profile),
+                              ("edit-undo-symbolic", "Reset to defaults", self.on_reset)):
+            btn = Gtk.Button(icon_name=icon, tooltip_text=tip, css_classes=["flat"])
+            btn.connect("clicked", cb)
+            acts.append(btn)
+        self.presets_group.set_header_suffix(acts)
+        self.preset_rows = []
+
         g = Adw.PreferencesGroup(title="Output")
         left.append(g)
         self.device_row = Adw.ComboRow(title="Device")
@@ -1050,16 +1043,35 @@ class Window(Adw.ApplicationWindow):
         return (non_hdmi or names or [""])[0]
 
     def fill_profiles(self, select=None):
-        was, self.building = self.building, True
+        """Rebuild the preset list; the active preset gets a tick and receives edits automatically."""
         self.profiles = load_profiles()
         self.profile_names = sorted(self.profiles, key=str.casefold)
-        self.profile_dd.set_model(Gtk.StringList.new(["None"] + self.profile_names))
         current = select if select is not None else self.s.get("profile")
         if current not in self.profile_names:
             self.s.pop("profile", None)
-        self.profile_dd.set_selected(self.profile_names.index(current) + 1 if current in self.profile_names else 0)
-        self.delete_btn.set_sensitive(current in self.profile_names)
-        self.building = was
+        for row in self.preset_rows:
+            self.presets_group.remove(row)
+        self.preset_rows = []
+        if not self.profile_names:
+            row = Adw.ActionRow(title="No presets yet", subtitle="Save the current sound with +",
+                                css_classes=["dim-label"])
+            self.presets_group.add(row)
+            self.preset_rows.append(row)
+            return
+        for name in self.profile_names:
+            active = name == current
+            row = Adw.ActionRow(title=GLib.markup_escape_text(name), activatable=True)
+            if active:
+                row.set_subtitle("Active · changes save automatically")
+            tick = Gtk.Image(icon_name="object-select-symbolic", opacity=1 if active else 0)
+            row.add_prefix(tick)
+            delete = Gtk.Button(icon_name="user-trash-symbolic", tooltip_text=f"Delete “{name}”",
+                                valign=Gtk.Align.CENTER, css_classes=["flat"])
+            delete.connect("clicked", lambda _b, n=name: self.on_delete_profile(n))
+            row.add_suffix(delete)
+            row.connect("activated", lambda _r, n=name: self.on_profile_selected(n))
+            self.presets_group.add(row)
+            self.preset_rows.append(row)
 
     # -- channels
 
@@ -1233,24 +1245,17 @@ class Window(Adw.ApplicationWindow):
 
     # -- profiles
 
-    def on_profile_selected(self, dd, _):
-        idx = dd.get_selected()
-        if self.building or idx == Gtk.INVALID_LIST_POSITION:
+    def on_profile_selected(self, name):
+        if name == self.s.get("profile") or name not in self.profiles:
             return
-        if idx == 0:  # "None": keep the current sound, stop auto-saving into a profile
-            self.s.pop("profile", None)
-            self.delete_btn.set_sensitive(False)
-            self.schedule_apply()
-            return
-        name = self.profile_names[idx - 1]
         self.apply_values(self.profiles[name])
         self.s["profile"] = name
-        self.delete_btn.set_sensitive(True)
+        self.fill_profiles(select=name)
         self.toast(f"Loaded “{name}”")
 
     def on_save_profile(self, _btn):
-        entry = Gtk.Entry(placeholder_text="Profile name", activates_default=True)
-        dlg = Adw.AlertDialog(heading="Save as new profile",
+        entry = Gtk.Entry(placeholder_text="Preset name", activates_default=True)
+        dlg = Adw.AlertDialog(heading="Save as new preset",
                               body="Changes you make afterwards are saved into it automatically.")
         dlg.set_extra_child(entry)
         dlg.add_response("cancel", "Cancel")
@@ -1270,7 +1275,7 @@ class Window(Adw.ApplicationWindow):
             try:
                 save_profiles(profiles)
             except OSError as e:
-                self.toast(f"Could not save profile: {e}")
+                self.toast(f"Could not save preset: {e}")
                 return
             self.s["profile"] = name
             self.fill_profiles(select=name)
@@ -1280,12 +1285,8 @@ class Window(Adw.ApplicationWindow):
         dlg.connect("response", done)
         dlg.present(self)
 
-    def on_delete_profile(self, _btn):
-        name = self.s.get("profile")
-        if name not in self.profile_names:
-            self.toast("Pick a profile to delete first")
-            return
-        dlg = Adw.AlertDialog(heading=f"Delete “{name}”?", body="Your current settings stay as they are.")
+    def on_delete_profile(self, name):
+        dlg = Adw.AlertDialog(heading=f"Delete “{name}”?", body="Your current sound stays as it is.")
         dlg.add_response("cancel", "Cancel")
         dlg.add_response("delete", "Delete")
         dlg.set_response_appearance("delete", Adw.ResponseAppearance.DESTRUCTIVE)
@@ -1297,7 +1298,8 @@ class Window(Adw.ApplicationWindow):
             profiles = load_profiles()
             profiles.pop(name, None)
             save_profiles(profiles)
-            self.s.pop("profile", None)
+            if self.s.get("profile") == name:
+                self.s.pop("profile", None)
             self.fill_profiles()
             self.schedule_apply()
             self.toast(f"Deleted “{name}”")
@@ -1308,7 +1310,7 @@ class Window(Adw.ApplicationWindow):
     def on_reset(self, _btn):
         dlg = Adw.AlertDialog(heading="Reset to defaults?",
                               body="Turns off every effect and resets all channels. "
-                                   "Saved profiles and your output device are kept.")
+                                   "Saved presets and your output device are kept.")
         dlg.add_response("cancel", "Cancel")
         dlg.add_response("reset", "Reset")
         dlg.set_response_appearance("reset", Adw.ResponseAppearance.DESTRUCTIVE)
