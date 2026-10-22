@@ -994,7 +994,7 @@ class Window(Adw.ApplicationWindow):
         self.channel_rows = []
 
         # ---- right column: EQ, 3D
-        g = Adw.PreferencesGroup(title="Equalizer",
+        g = self.eq_group = Adw.PreferencesGroup(title="Equalizer",
                                  description="Drag to shape · scroll to widen · double-click to reset")
         right.append(g)
         hdr = Gtk.Box(spacing=6, valign=Gtk.Align.CENTER)
@@ -1048,6 +1048,8 @@ class Window(Adw.ApplicationWindow):
         phone.add_setter(self.sidebar_close, "visible", True)
         phone.add_setter(band_box, "visible", False)  # touch users drag the curve; no fine controls
         phone.add_setter(self.eq, "content-height", 240)
+        phone.add_setter(self.eq_group, "description", "")  # mouse hints don't apply to touch
+        phone.add_setter(self.channels_group, "description", "Routing and crossovers")
         for side in ("margin-start", "margin-end"):
             phone.add_setter(self.main_box, side, 12)
             phone.add_setter(self.side_box, side, 12)

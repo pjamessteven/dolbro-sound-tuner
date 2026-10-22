@@ -21,7 +21,7 @@
   <!-- one smooth EQ curve across the badge: a lift, a dip, then flat -->
   <path d="M 22 66 C 32 66, 36 44, 48 44 S 66 84, 80 84 S 96 66, 106 66" fill="none" stroke="#ffffff" stroke-width="10" stroke-linecap="round" stroke-opacity="0.35" filter="url(#glow)"/>
   <path d="M 22 66 C 32 66, 36 44, 48 44 S 66 84, 80 84 S 96 66, 106 66" fill="none" stroke="#ffffff" stroke-width="7" stroke-linecap="round"/>
-  <g fill="#ffffff" stroke="#1d5fd6" stroke-width="3">
+  <g fill="#ffffff" stroke="#1d5fd6" stroke-opacity="0.35" stroke-width="2">
     <circle cx="48" cy="44" r="7.5"/>
     <circle cx="80" cy="84" r="7.5"/>
   </g>
