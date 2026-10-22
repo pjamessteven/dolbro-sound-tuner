@@ -27,7 +27,8 @@ with a sub or a full 7.1 setup, and every app plays through it.
   right-treble split for laptops, stereo to all speakers, and 80 Hz bass
   management for systems with a subwoofer.
 - **Loudness:** up to +20 dB of boost into a look-ahead limiter (ZaMaximX2),
-  plus optional **overdrive** for when you want it louder than clean allows.
+  plus optional **overdrive** for when you want it louder than clean allows,
+  and a switch to let GNOME's volume slider go past 100%.
 - **3D:** stereo width plus crosstalk cancellation in the style of
   Ambiophonics/RACE, which spreads sound wider than closely spaced speakers
   such as a laptop's.
@@ -42,6 +43,18 @@ with a sub or a full 7.1 setup, and every app plays through it.
   and bass management.
 - **No dropouts:** changes apply to the running filter live.
 - **Tiny:** one Python file and one readable PipeWire config.
+- **Hard to clip:** the chain always ends in a look-ahead limiter. See below.
+
+### Why other EQ apps can sound distorted
+
+Easy Effects also runs on PipeWire, so it isn't "too high level". Distortion
+usually comes from gain staging: EQ or bass boosts push the signal past
+0 dBFS, the most the sound chip can play, and it clips unless you add a
+limiter at the end of the chain or lower the level before the effects.
+Speaker Tuner always ends with a look-ahead limiter set below 0 dBFS, so
+boosts get louder instead of crackling. (Overdrive deliberately bypasses this.)
+Its processing also runs inside PipeWire itself rather than in a separate app
+process, so there's one less program that has to keep up in real time.
 
 ## Install
 

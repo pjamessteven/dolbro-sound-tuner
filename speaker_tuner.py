@@ -23,7 +23,7 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw, Gdk, GLib, GObject, Gtk  # noqa: E402
+from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk  # noqa: E402
 
 APP_ID = "io.github.pjamessteven.SpeakerTuner"
 VERSION = "0.3.0"
@@ -964,6 +964,13 @@ class Window(Adw.ApplicationWindow):
 
         g = Adw.PreferencesGroup(title="Loudness")
         left.append(g)
+        # GNOME's volume slider normally stops at 100%; this lets it go to ~150%.
+        schema = Gio.SettingsSchemaSource.get_default().lookup("org.gnome.desktop.sound", True)
+        if schema and schema.has_key("allow-volume-above-100-percent"):
+            self.sound_settings = Gio.Settings(schema_id="org.gnome.desktop.sound")
+            over = Adw.SwitchRow(title="Allow volume above 100%", subtitle="Lets the system volume go up to 150%")
+            self.sound_settings.bind("allow-volume-above-100-percent", over, "active", Gio.SettingsBindFlags.DEFAULT)
+            g.add(over)
         g.add(self.slider("Boost", "Gain into the limiter", 0, 20, 0.5, lambda v: f"{v:+.1f} dB", "boost_db"))
         g.add(self.slider("Ceiling", "Highest output level", -6, 0, 0.1, lambda v: f"{v:.1f} dBFS", "ceiling_db"))
         g.add(self.slider("Limiter release", "Longer is smoother, shorter is louder", 1, 100, 1,
