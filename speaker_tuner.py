@@ -54,6 +54,7 @@ DEFAULTS = {
     "sub_db": 0.0,
     "top_db": 0.0,
     "drive_db": 0.0,
+    "spatial_on": False,
     "width_pct": 100.0,
     "xtc_pct": 0.0,
     "xtc_us": 90.0,
@@ -104,7 +105,7 @@ def controls(s):
         if s["crossover"]:
             c[f"mix_{x}:Gain 1"], c[f"mix_{x}:Gain 2"] = 0.5, 0.5
         else:  # mid/side width: own = (1+w)/2, other = (1-w)/2
-            w = s["width_pct"] / 100
+            w = s["width_pct"] / 100 if s["spatial_on"] else 1.0
             own, other = (1 + w) / 2, (1 - w) / 2
             c[f"mix_{x}:Gain 1"], c[f"mix_{x}:Gain 2"] = (own, other) if x == "l" else (other, own)
         low_cut = float(s["protect_hz"]) if s["protect_hz"] > 20 else HP_OFF
@@ -123,7 +124,7 @@ def controls(s):
         c[f"trim_{x}:Mult"], c[f"trim_{x}:Add"] = 10 ** (trim_db / 20), 0.0
         # 3D: crosstalk cancellation (RACE-style, unrolled to 2 terms since the graph can't loop).
         # out = own - g*D(other) + g^2*D2(own), cancellation path band-limited to 250 Hz-5 kHz.
-        g = 0.0 if s["crossover"] else 0.71 * s["xtc_pct"] / 100  # 100% = -3 dB
+        g = 0.0 if s["crossover"] or not s["spatial_on"] else 0.71 * s["xtc_pct"] / 100  # 100% = -3 dB
         d = s["xtc_us"] / 1e6
         c[f"bpa_{x}:Freq"], c[f"bpa_{x}:Q"] = 250.0, 0.7071
         c[f"bpb_{x}:Freq"], c[f"bpb_{x}:Q"] = 5000.0, 0.7071
@@ -278,15 +279,22 @@ def missing_deps():
     return missing
 
 
-def load_settings():
-    s = dict(DEFAULTS)
-    try:
-        with open(SETTINGS_PATH) as f:
-            s.update(json.load(f))
-    except (OSError, json.JSONDecodeError):
-        pass
+def normalize(values):
+    """Defaults + known keys from `values`; settings saved before the 3D switch keep 3D on if they used it."""
+    s = json.loads(json.dumps(DEFAULTS))
+    s.update({k: v for k, v in values.items() if k in DEFAULTS or k == "profile"})
+    if "spatial_on" not in values:
+        s["spatial_on"] = s["xtc_pct"] > 0 or s["width_pct"] != 100
     s["eq"] = (list(s["eq"]) + [0.0] * 10)[:10]
     return s
+
+
+def load_settings():
+    try:
+        with open(SETTINGS_PATH) as f:
+            return normalize(json.load(f))
+    except (OSError, json.JSONDecodeError):
+        return normalize({"spatial_on": False})
 
 
 def save_settings(s):
@@ -332,6 +340,7 @@ class Window(Adw.ApplicationWindow):
         self.building = True
         self.needs_restart = False
         self.scales = {}
+        self.rows = {}
 
         if not self.s["target_sink"]:
             self.s["target_sink"] = self.pick_initial_sink()
@@ -428,6 +437,9 @@ class Window(Adw.ApplicationWindow):
             description="Best sitting centred, about an arm's length away. Off while the crossover is on",
         )
         page.add(g)
+        self.spatial_row = Adw.SwitchRow(title="Enable 3D")
+        self.spatial_row.connect("notify::active", self.on_spatial)
+        g.add(self.spatial_row)
         g.add(self.slider_row("width_pct", "Stereo width", "100% is normal", 0, 200, 5, "{:.0f}%"))
         g.add(self.slider_row("xtc_pct", "3D amount", "Crosstalk cancellation, pushes sound past the speakers", 0, 100, 5, "{:.0f}%"))
         g.add(self.slider_row("xtc_us", "3D delay", "Tune for your seating distance", 20, 300, 5, "{:.0f} µs"))
@@ -477,6 +489,7 @@ class Window(Adw.ApplicationWindow):
         row.add_suffix(sc)
         row.add_suffix(val)
         self.scales[key] = (sc, val, fmt_fn)
+        self.rows[key] = row
         return row
 
     def sync_ui(self):
@@ -489,6 +502,8 @@ class Window(Adw.ApplicationWindow):
             sc.set_value(gdb)
             val.set_text(f"{gdb:+.1f}")
         self.xo_row.set_active(self.s["crossover"])
+        self.spatial_row.set_active(self.s["spatial_on"])
+        self.sync_spatial_rows()
         self.side_row.set_selected(0 if self.s["sub_side"] == "left" else 1)
         self.sync_preset()
         self.building = was
@@ -561,13 +576,19 @@ class Window(Adw.ApplicationWindow):
         self.building = was
         self.schedule_apply()
 
+    def on_spatial(self, row, _):
+        self.sync_spatial_rows()
+        self.set("spatial_on", row.get_active())
+
+    def sync_spatial_rows(self):
+        for key in ("width_pct", "xtc_pct", "xtc_us"):
+            self.rows[key].set_sensitive(self.spatial_row.get_active())
+
     def apply_values(self, values):
         """Replace everything except device settings with `values`, then update UI and audio."""
         keep = {k: self.s[k] for k in DEVICE_KEYS}
-        self.s = json.loads(json.dumps(DEFAULTS))
-        self.s.update({k: v for k, v in values.items() if k in DEFAULTS})
+        self.s = normalize({k: v for k, v in values.items() if k != "profile"})
         self.s.update(keep)
-        self.s["eq"] = (list(self.s["eq"]) + [0.0] * 10)[:10]
         self.sync_ui()
         self.schedule_apply()
 

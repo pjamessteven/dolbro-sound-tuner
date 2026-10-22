@@ -1,6 +1,8 @@
 # Speaker Tuner
 
-A small GNOME app that makes laptop and desktop speakers sound better on Linux.
+**Get the most out of your shitty laptop speakers.**
+
+A small GNOME app that makes laptop (and any other) speakers sound better on Linux.
 
 <img src="data/screenshots/main.png" alt="Speaker Tuner window" width="420">
 
@@ -17,11 +19,12 @@ app to keep open, and changes apply live while music is playing.
   (ZaMaximX2), with an adjustable ceiling.
 - **Overdrive**: gain after the limiter. Above 0 dB it deliberately clips, for
   maximum loudness at the cost of distortion.
-- **Stereo width**: mid/side widening from mono (0%) to extra-wide (200%).
-- **3D**: crosstalk cancellation in the style of Ambiophonics/RACE. Each
-  speaker plays a delayed, inverted, band-limited copy of the other channel,
-  so sound appears to come from beyond the speakers. Works best sitting
-  centred in front of closely spaced speakers, such as a laptop's.
+- **3D** (with an on/off switch):
+  - **Stereo width**: mid/side widening from mono (0%) to extra-wide (200%).
+  - **3D amount**: crosstalk cancellation in the style of Ambiophonics/RACE.
+    Each speaker plays a delayed, inverted, band-limited copy of the other
+    channel, so sound appears to come from beyond the speakers. Works best
+    sitting centred in front of closely spaced speakers, such as a laptop's.
 - **Virtual crossover**: mixes to mono and sends the lows to one speaker and
   the highs to the other (Linkwitz-Riley, 24 dB/oct), with per-speaker levels.
 - **Profiles**: pick a profile from the dropdown, or save the current sound as a new named one. Changes save into the selected profile automatically. Delete or reset to defaults any time.
