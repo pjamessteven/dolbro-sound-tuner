@@ -948,11 +948,6 @@ class Window(Adw.ApplicationWindow):
         self.toasts = Adw.ToastOverlay(child=self.split)
         self.set_content(self.toasts)
 
-        bp = Adw.Breakpoint.new(Adw.BreakpointCondition.parse("max-width: 820sp"))
-        bp.add_setter(self.split, "collapsed", True)
-        bp.add_setter(sidebar_btn, "visible", True)
-        bp.add_setter(self.sidebar_close, "visible", True)
-        self.add_breakpoint(bp)
 
         # ---- left column: presets, output, loudness, channels
         self.presets_group = Adw.PreferencesGroup(title="Presets")
@@ -1016,10 +1011,9 @@ class Window(Adw.ApplicationWindow):
         self.band_label = Gtk.Label(css_classes=["heading"], xalign=0, hexpand=True, ellipsize=3, width_chars=15)  # END
         band_row.append(self.band_label)
         self.spin_labels = Gtk.SizeGroup(mode=Gtk.SizeGroupMode.HORIZONTAL)
-        # FlowBox so Freq/Gain/Width wrap onto a second line instead of forcing the window wider
-        self.band_box = band_box = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, halign=Gtk.Align.END,
-                                               max_children_per_line=3, min_children_per_line=1,
-                                               column_spacing=8, row_spacing=6)
+        # Freq/Gain/Width always stay on one row; breakpoints below move the band name above them
+        # or collapse the sidebar so the row always fits.
+        self.band_box = band_box = Gtk.Box(spacing=8, halign=Gtk.Align.END)
         band_box.connect("notify::visible", lambda *_: self.update_band_label())
         band_row.append(band_box)
         eq_card.append(band_row)
@@ -1030,7 +1024,25 @@ class Window(Adw.ApplicationWindow):
                                 tip="How wide the band is, in octaves. Scroll over the graph to change it")
 
         # Phone layout: settings live in the slide-out sidebar, band controls stack, tighter margins.
-        phone = Adw.Breakpoint.new(Adw.BreakpointCondition.parse("max-width: 560sp"))
+        # Adwaita applies the last matching breakpoint, so they go from widest to narrowest.
+        def stack_band_row(bp):
+            bp.add_setter(band_row, "orientation", Gtk.Orientation.VERTICAL)
+            bp.add_setter(band_box, "halign", Gtk.Align.START)
+
+        def collapse_sidebar(bp):
+            bp.add_setter(self.split, "collapsed", True)
+            bp.add_setter(self.sidebar_btn, "visible", True)
+            bp.add_setter(self.sidebar_close, "visible", True)
+
+        medium = Adw.Breakpoint.new(Adw.BreakpointCondition.parse("max-width: 1240sp"))
+        stack_band_row(medium)
+        self.add_breakpoint(medium)
+        narrow = Adw.Breakpoint.new(Adw.BreakpointCondition.parse("max-width: 980sp"))
+        stack_band_row(narrow)
+        collapse_sidebar(narrow)
+        self.add_breakpoint(narrow)
+
+        phone = Adw.Breakpoint.new(Adw.BreakpointCondition.parse("max-width: 620sp"))
         phone.add_setter(self.split, "collapsed", True)
         phone.add_setter(self.sidebar_btn, "visible", True)
         phone.add_setter(self.sidebar_close, "visible", True)
