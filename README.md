@@ -9,6 +9,8 @@ with a sub or a full 7.1 setup, and every app plays through it.
 
 <img src="data/screenshots/main.png" alt="Speaker Tuner window">
 
+<img src="data/screenshots/spectrum.gif" alt="Shaping the EQ curve over the live output spectrum">
+
 ## Features
 
 - **Parametric EQ you can draw:** 10 bands on a frequency-response graph.
