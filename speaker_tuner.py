@@ -684,7 +684,7 @@ class EqGraph(Gtk.DrawingArea):
     SPEC_FLOOR = -90.0
 
     def __init__(self, win):
-        super().__init__(hexpand=True, content_height=340)
+        super().__init__(hexpand=True, content_height=280)
         self.win = win
         self.selected = 0
         self.drag_band = None
