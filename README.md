@@ -1,4 +1,4 @@
-# Speaker Tuner
+# Dolbro™ Speaker Tuner
 
 **Get the most out of your shitty laptop speakers, or your 5.1 system.**
 
@@ -82,8 +82,8 @@ found. The app shows a banner naming anything that's missing.
 ## Install
 
 ```sh
-git clone https://github.com/pjamessteven/speaker-tuner.git
-cd speaker-tuner
+git clone https://github.com/pjamessteven/dolbro-speaker-tuner.git
+cd dolbro-speaker-tuner
 ./install.sh
 ```
 
