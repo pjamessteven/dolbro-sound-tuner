@@ -1,6 +1,6 @@
 # Dolbro™ Speaker Tuner
 
-**Get the most out of your shitty laptop speakers, or your 5.1 system.**
+**Get the most out of your shitty laptop speakers, or finely tune your audiophilic soundsystem.**
 
 Speaker Tuner is a system-wide EQ, crossover and speaker tuner for Linux
 desktops running PipeWire. It adds a virtual output, **Speaker Tuner**, in
