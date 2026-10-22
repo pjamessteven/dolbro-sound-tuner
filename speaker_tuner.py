@@ -856,9 +856,13 @@ class Window(Adw.ApplicationWindow):
         self.columns = Gtk.Box(spacing=24, margin_top=18, margin_bottom=24, margin_start=18, margin_end=18,
                                homogeneous=False)
         left = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18, width_request=380)
-        right = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18, hexpand=True)
+        # Right column sits on a raised card; the content box inside it provides the padding.
+        right_card = Gtk.Box(hexpand=True, valign=Gtk.Align.START, css_classes=["card"])
+        right = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18, hexpand=True,
+                        margin_top=18, margin_bottom=18, margin_start=18, margin_end=18)
+        right_card.append(right)
         self.columns.append(left)
-        self.columns.append(right)
+        self.columns.append(right_card)
         scroller.set_child(self.columns)
         self.toasts.set_child(scroller)
         view.set_content(self.toasts)
