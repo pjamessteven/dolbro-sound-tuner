@@ -11,9 +11,7 @@ desktops running PipeWire. It adds a virtual output, **Speaker Tuner**, in
 front of any sound device, from a laptop's built-in speakers to a stereo pair
 with a sub or a full 7.1 setup, and every app plays through it.
 
-<img src="data/screenshots/main.png" alt="Speaker Tuner window">
-
-<img src="data/screenshots/spectrum.gif" alt="Shaping the EQ curve over the live output spectrum">
+<img src="data/screenshots/main.webp" alt="Speaker Tuner: shaping the EQ curve over the live output spectrum">
 
 On phones and narrow windows the settings move into a slide-out panel:
 

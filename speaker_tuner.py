@@ -970,12 +970,12 @@ class Window(Adw.ApplicationWindow):
         self.default_row.connect("notify::active", self.on_default_toggled)
         g.add(self.default_row)
 
-        g = self.loudness_group = Adw.PreferencesGroup(title="Loudness", description="Louder without distortion")
+        g = self.loudness_group = Adw.PreferencesGroup(title="Loudness")
         # GNOME's volume slider normally stops at 100%; this lets it go to ~150%.
         schema = Gio.SettingsSchemaSource.get_default().lookup("org.gnome.desktop.sound", True)
         if schema and schema.has_key("allow-volume-above-100-percent"):
             self.sound_settings = Gio.Settings(schema_id="org.gnome.desktop.sound")
-            over = Adw.SwitchRow(title="Allow volume above 100%", subtitle="Lets the system volume go up to 150%")
+            over = Adw.SwitchRow(title="Allow volume above 100%")
             self.sound_settings.bind("allow-volume-above-100-percent", over, "active", Gio.SettingsBindFlags.DEFAULT)
             g.add(over)
         g.add(self.slider("Boost", "Louder without clipping", 0, 20, 0.5, lambda v: f"{v:+.1f} dB", "boost_db"))
@@ -1060,8 +1060,7 @@ class Window(Adw.ApplicationWindow):
         # 3D and Loudness: stacked, or side by side on very wide windows
         self.lower = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18, homogeneous=False)
         right.append(self.lower)
-        g = Adw.PreferencesGroup(title="3D", description="Best sitting centred, about an arm's length away",
-                                 hexpand=True, valign=Gtk.Align.START)
+        g = Adw.PreferencesGroup(title="3D Virtual Surround", hexpand=True, valign=Gtk.Align.START)
         self.lower.append(g)
         self.spatial_group = g
         self.spatial_row = Adw.SwitchRow(title="Enable 3D")
