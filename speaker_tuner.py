@@ -684,7 +684,7 @@ class EqGraph(Gtk.DrawingArea):
     SPEC_FLOOR = -90.0
 
     def __init__(self, win):
-        super().__init__(hexpand=True, content_height=260)
+        super().__init__(hexpand=True, content_height=340)
         self.win = win
         self.selected = 0
         self.drag_band = None
@@ -975,7 +975,7 @@ class Window(Adw.ApplicationWindow):
         self.default_row.connect("notify::active", self.on_default_toggled)
         g.add(self.default_row)
 
-        g = self.loudness_group = Adw.PreferencesGroup(title="Loudness")  # placed in the main panel below
+        g = self.loudness_group = Adw.PreferencesGroup(title="Loudness", description="Louder without distortion")
         # GNOME's volume slider normally stops at 100%; this lets it go to ~150%.
         schema = Gio.SettingsSchemaSource.get_default().lookup("org.gnome.desktop.sound", True)
         if schema and schema.has_key("allow-volume-above-100-percent"):
@@ -1016,7 +1016,10 @@ class Window(Adw.ApplicationWindow):
         self.band_label = Gtk.Label(css_classes=["heading"], xalign=0, hexpand=True, ellipsize=3, width_chars=15)  # END
         band_row.append(self.band_label)
         self.spin_labels = Gtk.SizeGroup(mode=Gtk.SizeGroupMode.HORIZONTAL)
-        self.band_box = band_box = Gtk.Box(spacing=8, halign=Gtk.Align.END)
+        # FlowBox so Freq/Gain/Width wrap onto a second line instead of forcing the window wider
+        self.band_box = band_box = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, halign=Gtk.Align.END,
+                                               max_children_per_line=3, min_children_per_line=1,
+                                               column_spacing=8, row_spacing=6)
         band_box.connect("notify::visible", lambda *_: self.update_band_label())
         band_row.append(band_box)
         eq_card.append(band_row)
@@ -1032,16 +1035,19 @@ class Window(Adw.ApplicationWindow):
         phone.add_setter(self.sidebar_btn, "visible", True)
         phone.add_setter(self.sidebar_close, "visible", True)
         phone.add_setter(band_box, "visible", False)  # touch users drag the curve; no fine controls
+        phone.add_setter(self.eq, "content-height", 240)
         for side in ("margin-start", "margin-end"):
             phone.add_setter(self.main_box, side, 12)
             phone.add_setter(self.side_box, side, 12)
         phone.add_setter(self.split, "min-sidebar-width", 280)
         self.add_breakpoint(phone)
 
-        right.append(self.loudness_group)
-
-        g = Adw.PreferencesGroup(title="3D", description="Best sitting centred, about an arm's length away")
-        right.append(g)
+        # 3D and Loudness: stacked, or side by side on very wide windows
+        self.lower = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18, homogeneous=False)
+        right.append(self.lower)
+        g = Adw.PreferencesGroup(title="3D", description="Best sitting centred, about an arm's length away",
+                                 hexpand=True, valign=Gtk.Align.START)
+        self.lower.append(g)
         self.spatial_row = Adw.SwitchRow(title="Enable 3D")
         self.spatial_row.connect("notify::active", self.on_spatial)
         g.add(self.spatial_row)
@@ -1053,6 +1059,14 @@ class Window(Adw.ApplicationWindow):
         ]
         for r in self.spatial_sliders:
             g.add(r)
+        self.loudness_group.set_hexpand(True)
+        self.loudness_group.set_valign(Gtk.Align.START)
+        self.lower.append(self.loudness_group)
+        wide = Adw.Breakpoint.new(Adw.BreakpointCondition.parse("min-width: 1400sp"))
+        wide.add_setter(self.lower, "orientation", Gtk.Orientation.HORIZONTAL)
+        wide.add_setter(self.lower, "homogeneous", True)
+        wide.add_setter(self.eq, "content-height", 440)
+        self.add_breakpoint(wide)
 
         self.loaders.append(self.load_misc)
         self.fill_devices()
