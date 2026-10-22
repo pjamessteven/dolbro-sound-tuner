@@ -9,7 +9,7 @@ license=('MIT')
 depends=('python' 'python-gobject' 'gtk4' 'libadwaita' 'pipewire' 'libpulse' 'zam-plugins-lv2' 'hicolor-icon-theme')
 makedepends=('make')
 source=("dolbro-sound-tuner-$pkgver.tar.gz::$url/archive/v$pkgver.tar.gz")
-sha256sums=('SKIP_UNTIL_TAGGED')
+sha256sums=('b54131882df04b3b69287e2ff436c748d78140d4d4d59ea6eff5172917f6cb7d')
 
 package() {
   cd "dolbro-sound-tuner-$pkgver"
