@@ -653,8 +653,9 @@ def fmt_hz(f):
     return f"{f / 1000:.1f} kHz" if f >= 1000 else f"{f:.0f} Hz"
 
 
-def band_text(i, b):
-    return f"Band {i + 1}  ·  {fmt_hz(b['f'])}  ·  {b['t']:+.1f} dB"
+def band_text(i, b, with_gain=False):
+    text = f"Band {i + 1}  ·  {fmt_hz(b['f'])}"
+    return f"{text}  ·  {b['t']:+.1f} dB" if with_gain else text
 
 
 def q_to_octaves(q):
@@ -974,8 +975,7 @@ class Window(Adw.ApplicationWindow):
         self.default_row.connect("notify::active", self.on_default_toggled)
         g.add(self.default_row)
 
-        g = Adw.PreferencesGroup(title="Loudness")
-        left.append(g)
+        g = self.loudness_group = Adw.PreferencesGroup(title="Loudness")  # placed in the main panel below
         # GNOME's volume slider normally stops at 100%; this lets it go to ~150%.
         schema = Gio.SettingsSchemaSource.get_default().lookup("org.gnome.desktop.sound", True)
         if schema and schema.has_key("allow-volume-above-100-percent"):
@@ -1013,10 +1013,11 @@ class Window(Adw.ApplicationWindow):
         eq_card.append(self.eq)
         eq_card.append(Gtk.Separator())
         band_row = Gtk.Box(spacing=12, margin_top=10, margin_bottom=10, margin_start=14, margin_end=10)
-        self.band_label = Gtk.Label(css_classes=["heading"], xalign=0, hexpand=True)
+        self.band_label = Gtk.Label(css_classes=["heading"], xalign=0, hexpand=True, ellipsize=3, width_chars=15)  # END
         band_row.append(self.band_label)
         self.spin_labels = Gtk.SizeGroup(mode=Gtk.SizeGroupMode.HORIZONTAL)
-        band_box = Gtk.Box(spacing=8, halign=Gtk.Align.END)
+        self.band_box = band_box = Gtk.Box(spacing=8, halign=Gtk.Align.END)
+        band_box.connect("notify::visible", lambda *_: self.update_band_label())
         band_row.append(band_box)
         eq_card.append(band_row)
         g.add(eq_card)
@@ -1036,6 +1037,8 @@ class Window(Adw.ApplicationWindow):
             phone.add_setter(self.side_box, side, 12)
         phone.add_setter(self.split, "min-sidebar-width", 280)
         self.add_breakpoint(phone)
+
+        right.append(self.loudness_group)
 
         g = Adw.PreferencesGroup(title="3D", description="Best sitting centred, about an arm's length away")
         right.append(g)
@@ -1330,7 +1333,7 @@ class Window(Adw.ApplicationWindow):
     def on_bands_changed(self, from_spin=False):
         solve_gains(self.s["bands"])
         b = self.s["bands"][self.eq.selected]
-        self.band_label.set_text(band_text(self.eq.selected, b))
+        self.update_band_label()
         self.eq.invalidate()
         if not from_spin:
             was, self.building = self.building, True
@@ -1339,9 +1342,14 @@ class Window(Adw.ApplicationWindow):
         self.sync_preset()
         self.schedule_apply()
 
+    def update_band_label(self):
+        """Band name and frequency; the gain too when the fine controls are hidden (phones)."""
+        i = self.eq.selected
+        self.band_label.set_text(band_text(i, self.s["bands"][i], with_gain=not self.band_box.get_visible()))
+
     def on_band_selected(self, i):
         b = self.s["bands"][i]
-        self.band_label.set_text(band_text(i, b))
+        self.update_band_label()
         was, self.building = self.building, True
         self.spin_f.set_value(b["f"])
         self.spin_g.set_value(b["t"])
