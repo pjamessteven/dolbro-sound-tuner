@@ -919,7 +919,7 @@ class Window(Adw.ApplicationWindow):
                                               visible=False)
         side_header.pack_start(self.sidebar_close)
         side_view.add_top_bar(side_header)
-        left = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18,
+        self.side_box = left = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18,
                        margin_top=6, margin_bottom=24, margin_start=18, margin_end=18)
         side_view.set_content(Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER, child=left))
         self.split.set_sidebar(side_view)
@@ -1031,6 +1031,8 @@ class Window(Adw.ApplicationWindow):
         phone.add_setter(band_box, "halign", Gtk.Align.START)
         for side in ("margin-start", "margin-end"):
             phone.add_setter(self.main_box, side, 12)
+            phone.add_setter(self.side_box, side, 12)
+        phone.add_setter(self.split, "min-sidebar-width", 280)
         self.add_breakpoint(phone)
 
         g = Adw.PreferencesGroup(title="3D", description="Best sitting centred, about an arm's length away")
@@ -1084,7 +1086,7 @@ class Window(Adw.ApplicationWindow):
         sc = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, lo_s, hi_s, 0.001 if log else step)
         sc.set_draw_value(False)
         sc.set_hexpand(True)
-        sc.set_size_request(100, -1)
+        sc.set_size_request(60, -1)
         sc.set_valign(Gtk.Align.CENTER)
         box.append(sc)
         val = Gtk.Label(css_classes=["numeric", "dim-label"], xalign=1, width_chars=8, valign=Gtk.Align.CENTER)
