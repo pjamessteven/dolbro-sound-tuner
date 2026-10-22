@@ -41,6 +41,9 @@ On phones and narrow windows the settings move into a slide-out panel:
 
 ## How it compares to Easy Effects, JamesDSP, etc.
 
+- **Modern, easy UI:** one clean screen. Draw the EQ curve, set loudness and
+  3D, and pick a preset, without digging through plugin panels. It's
+  mobile-friendly too, adapting from phones up to wide desktop screens.
 - **Nothing to keep running:** processing runs inside PipeWire itself. Close
   the app and your sound stays tuned from login onward.
 - **True multichannel:** 5.1 stays 5.1, with per-channel crossovers, delays
