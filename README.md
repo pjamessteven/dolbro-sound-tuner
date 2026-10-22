@@ -47,14 +47,12 @@ with a sub or a full 7.1 setup, and every app plays through it.
 
 ### Why other EQ apps can sound distorted
 
-Easy Effects also runs on PipeWire, so it isn't "too high level". Distortion
-usually comes from gain staging: EQ or bass boosts push the signal past
-0 dBFS, the most the sound chip can play, and it clips unless you add a
-limiter at the end of the chain or lower the level before the effects.
-Speaker Tuner always ends with a look-ahead limiter set below 0 dBFS, so
-boosts get louder instead of crackling. (Overdrive deliberately bypasses this.)
-Its processing also runs inside PipeWire itself rather than in a separate app
-process, so there's one less program that has to keep up in real time.
+EQ and bass boosts can push the signal past 0 dBFS, the most the sound chip
+can play, and it clips unless a limiter catches it. Speaker Tuner always ends
+with a look-ahead limiter set below 0 dBFS, so boosts get louder instead of
+crackling. (Overdrive deliberately bypasses this.) Its processing also runs
+inside PipeWire itself rather than in a separate app process, so there's one
+less program that has to keep up in real time.
 
 ## Install
 
