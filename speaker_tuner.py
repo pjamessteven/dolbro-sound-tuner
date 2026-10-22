@@ -23,7 +23,7 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw, Gdk, GLib, Gtk  # noqa: E402
+from gi.repository import Adw, Gdk, GLib, GObject, Gtk  # noqa: E402
 
 APP_ID = "io.github.pjamessteven.SpeakerTuner"
 VERSION = "0.3.0"
@@ -827,32 +827,37 @@ class Window(Adw.ApplicationWindow):
             if n == self.s["target_sink"]:
                 self.s["target_positions"] = pos
 
-        view = Adw.ToolbarView()
-        view.add_top_bar(Adw.HeaderBar())
+        # Layout: a full-height sidebar (presets, output, loudness, channels) and the main area (EQ, 3D).
+        self.split = Adw.OverlaySplitView(min_sidebar_width=360, max_sidebar_width=440, sidebar_width_fraction=0.36)
+
+        side_view = Adw.ToolbarView()
+        side_view.add_top_bar(Adw.HeaderBar(show_title=False))
+        left = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18,
+                       margin_top=6, margin_bottom=24, margin_start=18, margin_end=18)
+        side_view.set_content(Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER, child=left))
+        self.split.set_sidebar(side_view)
+
+        main_view = Adw.ToolbarView()
+        header = Adw.HeaderBar()
+        sidebar_btn = Gtk.ToggleButton(icon_name="sidebar-show-symbolic", tooltip_text="Show settings", visible=False)
+        self.split.bind_property("show-sidebar", sidebar_btn, "active",
+                                 GObject.BindingFlags.BIDIRECTIONAL | GObject.BindingFlags.SYNC_CREATE)
+        header.pack_start(sidebar_btn)
+        main_view.add_top_bar(header)
         self.banner = Adw.Banner()
         self.banner.connect("button-clicked", self.on_reload)
-        view.add_top_bar(self.banner)
+        main_view.add_top_bar(self.banner)
+        right = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18,
+                        margin_top=6, margin_bottom=24, margin_start=24, margin_end=24)
+        main_view.set_content(Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER, child=right))
+        self.split.set_content(main_view)
 
-        self.toasts = Adw.ToastOverlay()
-        scroller = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER)
-        self.columns = Gtk.Box(spacing=24, margin_top=18, margin_bottom=24, margin_start=18, margin_end=18,
-                               homogeneous=False)
-        left = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18, width_request=380)
-        # Right column sits on a raised card; the content box inside it provides the padding.
-        right_card = Gtk.Box(hexpand=True, valign=Gtk.Align.START, css_classes=["card"])
-        right = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18, hexpand=True,
-                        margin_top=18, margin_bottom=18, margin_start=18, margin_end=18)
-        right_card.append(right)
-        self.columns.append(left)
-        self.columns.append(right_card)
-        scroller.set_child(self.columns)
-        self.toasts.set_child(scroller)
-        view.set_content(self.toasts)
-        self.set_content(view)
+        self.toasts = Adw.ToastOverlay(child=self.split)
+        self.set_content(self.toasts)
 
-        bp = Adw.Breakpoint.new(Adw.BreakpointCondition.parse("max-width: 900sp"))
-        bp.add_setter(self.columns, "orientation", Gtk.Orientation.VERTICAL)
-        bp.add_setter(left, "width-request", -1)
+        bp = Adw.Breakpoint.new(Adw.BreakpointCondition.parse("max-width: 820sp"))
+        bp.add_setter(self.split, "collapsed", True)
+        bp.add_setter(sidebar_btn, "visible", True)
         self.add_breakpoint(bp)
 
         # ---- left column: presets, output, loudness, channels
