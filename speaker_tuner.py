@@ -77,7 +77,6 @@ DEFAULTS = {
     "width_pct": 100.0,
     "xtc_pct": 0.0,
     "xtc_us": 90.0,
-    "spectrum_on": True,
 }
 DEVICE_KEYS = ("target_sink", "target_positions")  # per-machine, not stored in profiles
 
@@ -841,7 +840,7 @@ class EqGraph(Gtk.DrawingArea):
 
         # live spectrum (own scale: SPEC_FLOOR..0 dBFS over the full height)
         an = self.win.analyzer
-        if self.win.s["spectrum_on"] and an.proc:
+        if an.proc:
             cr.move_to(0, h)
             for c, lvl in enumerate(an.levels):
                 x0 = self.x_of(an.edges[c], w)
@@ -985,9 +984,6 @@ class Window(Adw.ApplicationWindow):
                                  description="Drag to shape the curve · scroll to widen · double-click to reset")
         right.append(g)
         hdr = Gtk.Box(spacing=6, valign=Gtk.Align.CENTER)
-        self.spectrum_btn = Gtk.ToggleButton(label="Spectrum", tooltip_text="Show the live output spectrum")
-        self.spectrum_btn.connect("toggled", self.on_spectrum_toggled)
-        hdr.append(self.spectrum_btn)
         self.presets = Gtk.DropDown.new_from_strings(["Custom"] + list(PRESETS))
         self.presets.connect("notify::selected", self.on_preset)
         hdr.append(self.presets)
@@ -1095,7 +1091,6 @@ class Window(Adw.ApplicationWindow):
         self.spatial_row.set_active(self.s["spatial_on"])
         for r in self.spatial_sliders:
             r.set_sensitive(self.s["spatial_on"])
-        self.spectrum_btn.set_active(self.s["spectrum_on"])
 
     def sync_ui(self):
         was, self.building = self.building, True
@@ -1308,15 +1303,8 @@ class Window(Adw.ApplicationWindow):
         self.s["bands"] = [{"f": float(f), "t": float(g), "g": float(g), "q": EQ_Q} for f, g in zip(EQ_FREQS, gains)]
         self.on_bands_changed()
 
-    def on_spectrum_toggled(self, btn):
-        if self.building:
-            return
-        self.s["spectrum_on"] = btn.get_active()
-        self.update_analyzer()
-        self.schedule_apply()
-
     def update_analyzer(self):
-        if self.s["spectrum_on"] and self.get_visible():
+        if self.get_visible():  # spectrum runs whenever the window is open
             self.analyzer.start(self.s["target_sink"])
         else:
             self.analyzer.stop()
