@@ -896,6 +896,7 @@ class Window(Adw.ApplicationWindow):
         self.building = True
         self.needs_restart = False
         self.loaders = []  # callables that push self.s into widgets
+        self.slider_heads = Gtk.SizeGroup(mode=Gtk.SizeGroupMode.HORIZONTAL)
         self.profiles = {}
         self.profile_names = []
         self.analyzer = Analyzer(self.on_spectrum)
@@ -973,7 +974,7 @@ class Window(Adw.ApplicationWindow):
             g.add(over)
         g.add(self.slider("Boost", "Louder without clipping", 0, 20, 0.5, lambda v: f"{v:+.1f} dB", "boost_db"))
         g.add(self.slider("Ceiling", "Maximum output level", -6, 0, 0.1, lambda v: f"{v:.1f} dBFS", "ceiling_db"))
-        g.add(self.slider("Limiter release", "Longer is smoother, shorter is punchier", 1, 100, 1,
+        g.add(self.slider("Limiter", "Release time: longer is smoother, shorter is punchier", 1, 100, 1,
                           lambda v: f"{v:.0f} ms", "release_ms"))
         g.add(self.slider("Overdrive", "Extra gain that distorts", 0, 18, 0.5,
                           lambda v: f"{v:+.1f} dB", "drive_db"))
@@ -1039,35 +1040,35 @@ class Window(Adw.ApplicationWindow):
     # -- widget factories
 
     def slider(self, title, tip, lo, hi, step, fmt, key=None, get=None, put=None, log=False):
-        """Row with title + short description and the value on top, full-width slider below.
+        """One-line row: title, (i) button, slider, value.
 
         Reads/writes self.s[key], or uses get()/put(v) for nested values.
         """
         get = get or (lambda: self.s[key])
         put = put or (lambda v: self.s.__setitem__(key, v))
         row = Adw.PreferencesRow(title=title, activatable=False)
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2,
-                      margin_top=10, margin_bottom=6, margin_start=12, margin_end=12)
-        # title, an (i) button explaining it (tooltip on hover, popover on click/tap), then the value
-        top = Gtk.Box(spacing=2)
-        top.append(Gtk.Label(label=title, xalign=0, valign=Gtk.Align.CENTER))
-        if tip:
+        box = Gtk.Box(spacing=4, margin_top=6, margin_bottom=6, margin_start=12, margin_end=12)
+        head = Gtk.Box(spacing=4)  # same width on every row so the sliders line up
+        self.slider_heads.add_widget(head)
+        box.append(head)
+        head.append(Gtk.Label(label=title, xalign=0, valign=Gtk.Align.CENTER))
+        if tip:  # tooltip on hover, popover on click/tap
             theme = Gtk.IconTheme.get_for_display(Gdk.Display.get_default())
             icon = "info-outline-symbolic" if theme.has_icon("info-outline-symbolic") else "dialog-information-symbolic"
             info = Gtk.MenuButton(icon_name=icon, tooltip_text=tip,
                                   valign=Gtk.Align.CENTER, has_frame=False, css_classes=["circular", "dim-label"])
             info.set_popover(Gtk.Popover(child=Gtk.Label(label=tip, wrap=True, max_width_chars=32,
                                                          margin_top=6, margin_bottom=6, margin_start=6, margin_end=6)))
-            top.append(info)
-        top.append(Gtk.Box(hexpand=True))
-        val = Gtk.Label(css_classes=["numeric", "dim-label"], xalign=1, valign=Gtk.Align.CENTER)
-        top.append(val)
-        box.append(top)
+            head.append(info)
         lo_s, hi_s = (to_log(lo), to_log(hi)) if log else (lo, hi)
         sc = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, lo_s, hi_s, 0.001 if log else step)
         sc.set_draw_value(False)
         sc.set_hexpand(True)
+        sc.set_size_request(100, -1)
+        sc.set_valign(Gtk.Align.CENTER)
         box.append(sc)
+        val = Gtk.Label(css_classes=["numeric", "dim-label"], xalign=1, width_chars=8, valign=Gtk.Align.CENTER)
+        box.append(val)
         row.set_child(box)
 
         def value_of(scale_v):
