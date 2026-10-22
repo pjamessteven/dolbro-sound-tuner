@@ -1,39 +1,68 @@
 # Speaker Tuner
 
-**Get the most out of your shitty laptop speakers.**
+**Get the most out of your shitty laptop speakers, or your 5.1 system.**
 
-A small GNOME app that makes laptop (and any other) speakers sound better on Linux.
+Speaker Tuner is a system-wide EQ, crossover and speaker tuner for Linux
+desktops running PipeWire. It adds a virtual output, **Speaker Tuner**, in
+front of any sound device, from a laptop's built-in speakers to a stereo pair
+with a sub or a full 7.1 setup, and every app plays through it.
 
-<img src="data/screenshots/main.png" alt="Speaker Tuner window" width="420">
-
-It adds a virtual output, **Speaker Tuner**, in front of any PipeWire sink. All
-processing runs inside PipeWire itself (a `filter-chain` module), so there's no
-app to keep open, and changes apply live while music is playing.
+<img src="data/screenshots/main.png" alt="Speaker Tuner window">
 
 ## Features
 
-- **Low cut**: a 4th-order high-pass that keeps small speakers from wasting
-  power on bass they can't play, so they get louder with less distortion.
-- **10-band equalizer** (31 Hz to 16 kHz, ±12 dB) with presets.
-- **Boost + limiter**: up to +20 dB of gain into a look-ahead limiter
-  (ZaMaximX2), with an adjustable ceiling.
-- **Overdrive**: gain after the limiter. Above 0 dB it deliberately clips, for
-  maximum loudness at the cost of distortion.
-- **3D** (with an on/off switch):
-  - **Stereo width**: mid/side widening from mono (0%) to extra-wide (200%).
-  - **3D amount**: crosstalk cancellation in the style of Ambiophonics/RACE.
-    Each speaker plays a delayed, inverted, band-limited copy of the other
-    channel, so sound appears to come from beyond the speakers. Works best
-    sitting centred in front of closely spaced speakers, such as a laptop's.
-- **Virtual crossover**: mixes to mono and sends the lows to one speaker and
-  the highs to the other (Linkwitz-Riley, 24 dB/oct), with per-speaker levels.
-- **Profiles**: pick a profile from the dropdown, or save the current sound as a new named one. Changes save into the selected profile automatically. Delete or reset to defaults any time.
+- **Parametric EQ you can draw:** 10 bands on a frequency-response graph.
+  Drag a point to set frequency and gain, scroll to change its width (Q), or
+  type exact values. A **live spectrum** of what's playing is drawn behind
+  the curve.
+- **Per-channel routing and crossovers for any layout** (2.0, 2.1, 4.0, 5.1,
+  7.1, …). For each speaker channel you set:
+  - the source: same channel, left, right, mono, all channels (for a sub) or off
+  - high-pass and low-pass crossover filters (Linkwitz-Riley, 24 dB/oct)
+  - level, delay (for time alignment) and polarity
+- **One-click channel setups:** low cut for small speakers, a left-bass /
+  right-treble split for laptops, stereo to all speakers, and 80 Hz bass
+  management for systems with a subwoofer.
+- **Loudness:** up to +20 dB of boost into a look-ahead limiter (ZaMaximX2),
+  plus optional **overdrive** for when you want it louder than clean allows.
+- **3D:** stereo width plus crosstalk cancellation in the style of
+  Ambiophonics/RACE, which spreads sound wider than closely spaced speakers
+  such as a laptop's.
+- **Profiles:** pick one from the top bar or save the current sound under a
+  name. Changes save into the selected profile as you go.
+
+## Why not Easy Effects, JamesDSP or similar?
+
+Those are great, flexible tools. Speaker Tuner trades their flexibility for
+being built into the audio system and focused on speakers:
+
+- **Nothing to keep running.** The processing is a PipeWire `filter-chain`
+  loaded by PipeWire itself. The app is just a settings window: close it and
+  your sound stays tuned, from login onward, with no background service or
+  autostart entry.
+- **System-level and multichannel.** It sits in front of one device as a
+  proper N-channel sink, so 5.1 content stays 5.1, and you get real per-channel
+  crossovers, delays and bass management, not just a stereo effects chain.
+- **Live changes without dropouts.** The filter layout is fixed, so moving a
+  slider updates the running filter (`pw-cli set-param`) instead of rebuilding
+  a pipeline.
+- **Speaker-first defaults.** Low cut, limiter, overdrive, 3D and crossovers
+  are the controls that matter for small or multi-way speakers, all on one
+  screen.
+- **Tiny and transparent.** One Python file, no compiled code, and the whole
+  DSP setup is a readable config file in
+  `~/.config/pipewire/pipewire.conf.d/speaker-tuner.conf`. Uninstalling
+  removes it.
+
+If you want convolution, plugin chains, per-app effects or microphone
+processing, Easy Effects is the better tool.
 
 ## Requirements
 
 - PipeWire with `pipewire-pulse` and WirePlumber (the default on most current
-  distros), plus `pw-cli`, `pw-dump` and `pactl`.
-- Python 3 with GObject introspection, GTK 4 and libadwaita 1.5 or newer.
+  distros), plus `pw-cli`, `pw-dump`, `pw-record` and `pactl`.
+- Python 3 with GObject introspection, GTK 4 (4.10+) and libadwaita 1.5 or
+  newer.
 - The **ZaMaximX2** LV2 plugin from [zam-plugins](https://github.com/zamaudio/zam-plugins).
 - PipeWire's **LV2 support for filter-chain**. Since PipeWire 1.4 some distros
   package it separately.
@@ -55,10 +84,10 @@ cd speaker-tuner
 ./install.sh
 ```
 
-This installs for your user only, with no root needed, into
-`~/.local/share/speaker-tuner`, `~/.local/bin/speaker-tuner` and an app-grid
-launcher. Open **Speaker Tuner**, pick your output device, and click
-**Load** in the banner. Audio restarts once to load the filter.
+This installs for your user only, with no root needed. Open **Speaker Tuner**,
+pick your output device, and click **Load** in the banner. Audio restarts
+once to load the filter. Changing to a device with a different channel layout
+needs one more restart, which the app offers.
 
 To uninstall:
 
@@ -71,38 +100,34 @@ in `~/.config/speaker-tuner/` until you delete them.
 
 ## How it works
 
-The app writes `~/.config/pipewire/pipewire.conf.d/speaker-tuner.conf`, which
-defines a fixed filter graph:
-
 ```
-L/R → width/mono mix → low cut → 10-band EQ → crossover filters → level trim
-    → 3D crosstalk cancellation → limiter (ZaMaximX2) → overdrive → your speakers
+per input channel:   width (FL/FR) → 10-band EQ → 3D crosstalk cancellation (FL/FR)
+per output channel:  source mix → high-pass → low-pass → level/polarity → delay
+                     → limiter → overdrive → device channel
 ```
 
-Every feature is a parameter on that one graph. Turning something off just
-sets it to a neutral value, such as 0 dB or a filter moved outside the audible
-range. That's why sliders apply instantly with `pw-cli set-param` and don't
-need an audio restart. Only changing the output device, or updating to a
-version with a different graph, restarts PipeWire.
+The graph's layout depends only on the device's channels. Everything else is
+a parameter, and turning a feature off sets it to a neutral value, such as
+0 dB or a filter moved outside the audible range.
 
 The 3D effect is RACE unrolled to two terms:
 `out = own − g·D(other) + g²·D₂(own)`, band-limited to 250 Hz–5 kHz. PipeWire's
 filter graphs can't contain feedback loops, so it isn't fully recursive.
-Starting points from the literature are a delay of 60–120 µs and about −3 dB of
-attenuation, which is 3D amount 100%.
+
+The spectrum is read with `pw-record` from the device you're tuning, and only
+while the window is open.
 
 ## Tips
 
-- **Laptops:** set the low cut to about 100–150 Hz and add 6–10 dB of boost.
-  That's roughly what Windows audio enhancements such as Dolby do on most
-  laptops.
+- **Laptops:** apply the *Small speakers* setup (120 Hz low cut) and add
+  6–10 dB of boost. That's roughly what Windows enhancements such as Dolby do
+  on most laptops.
+- **Subwoofer:** apply *Bass management (80 Hz)*, then fine-tune the
+  subwoofer's level and delay until bass sounds even at your seat.
 - **3D:** sit centred, set 3D amount to about 70%, then move 3D delay until the
   sound spreads wider than the speakers.
 - **Overdrive** sends clipped audio to your speakers. Use it sparingly on small
   drivers.
-- **Headphones:** if your speakers and headphone jack share one output, the
-  filter also applies to headphones. Turn off **Use Speaker Tuner** when
-  you plug them in.
 
 ## License
 
