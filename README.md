@@ -1,21 +1,21 @@
 <p align="center">
-  <img src="data/icons/io.github.pjamessteven.SpeakerTuner.svg" width="128" alt="Speaker Tuner icon">
+  <img src="data/icons/io.github.pjamessteven.SpeakerTuner.svg" width="128" alt="Sound Tuner icon">
 </p>
 
-<h1 align="center">Dolbro™ Speaker Tuner</h1>
+<h1 align="center">Dolbro™ Sound Tuner</h1>
 
 <p align="center"><b>Get the most out of your shitty laptop speakers, or finely tune your audiophilic soundsystem.</b></p>
 
-Speaker Tuner is a system-wide EQ, crossover and speaker tuner for Linux
-desktops running PipeWire. It adds a virtual output, **Speaker Tuner**, in
+Sound Tuner is a system-wide EQ, crossover and speaker tuner for Linux
+desktops running PipeWire. It adds a virtual output, **Sound Tuner**, in
 front of any sound device, from a laptop's built-in speakers to a stereo pair
 with a sub or a full 7.1 setup, and every app plays through it.
 
-<img src="data/screenshots/main.webp" alt="Speaker Tuner: shaping the EQ curve over the live output spectrum">
+<img src="data/screenshots/main.webp" alt="Sound Tuner: shaping the EQ curve over the live output spectrum">
 
 On phones and narrow windows the settings move into a slide-out panel:
 
-<img src="data/screenshots/mobile.png" alt="Speaker Tuner on a phone: equalizer and settings panel" width="420">
+<img src="data/screenshots/mobile.png" alt="Sound Tuner on a phone: equalizer and settings panel" width="420">
 
 ## Features
 
@@ -57,7 +57,7 @@ On phones and narrow windows the settings move into a slide-out panel:
 ### Why other EQ apps can sound distorted
 
 EQ and bass boosts can push the signal past 0 dBFS, the most the sound chip
-can play, and it clips unless a limiter catches it. Speaker Tuner always ends
+can play, and it clips unless a limiter catches it. Sound Tuner always ends
 with a look-ahead limiter set below 0 dBFS, so boosts get louder instead of
 crackling. (Overdrive deliberately bypasses this.) Its processing also runs
 inside PipeWire itself rather than in a separate app process, so there's one
@@ -66,8 +66,8 @@ less program that has to keep up in real time.
 ## Install
 
 ```sh
-git clone https://github.com/pjamessteven/dolbro-speaker-tuner.git
-cd dolbro-speaker-tuner
+git clone https://github.com/pjamessteven/dolbro-sound-tuner.git
+cd dolbro-sound-tuner
 ./install.sh
 ```
 
@@ -75,7 +75,7 @@ The script installs any missing dependencies with your package manager (dnf,
 apt or pacman). It shows the exact command and asks before using `sudo`. It
 then installs the app for your user only.
 
-Open **Speaker Tuner**, pick your output device, and click **Load** in the
+Open **Sound Tuner**, pick your output device, and click **Load** in the
 banner. Audio restarts once to load the filter.
 
 | Option | What it does |

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Install Speaker Tuner for the current user.
+# Install Sound Tuner for the current user.
 #   ./install.sh              install dependencies (asks first, needs sudo) and the app
 #   ./install.sh --yes        same, without asking before installing packages
 #   ./install.sh --no-deps    install the app only
@@ -31,7 +31,7 @@ if [ "$MODE" = "uninstall" ]; then
         systemctl --user restart pipewire pipewire-pulse wireplumber 2>/dev/null || true
     fi
     command -v update-desktop-database >/dev/null && update-desktop-database "$SHARE/applications" || true
-    echo "Speaker Tuner removed. Saved settings and profiles are in $CONFIG/speaker-tuner (delete it to remove them)."
+    echo "Sound Tuner removed. Saved settings and profiles are in $CONFIG/speaker-tuner (delete it to remove them)."
     exit 0
 fi
 
@@ -154,7 +154,7 @@ elif [ "$DRY_RUN" = 1 ]; then
 fi
 
 if ! have_ui; then
-    echo "Speaker Tuner needs Python GObject with GTK 4 and libadwaita 1.5 or newer." >&2
+    echo "Sound Tuner needs Python GObject with GTK 4 and libadwaita 1.5 or newer." >&2
     exit 1
 fi
 
@@ -174,4 +174,4 @@ sed "s|^Exec=.*|Exec=$BIN/speaker-tuner|" "$SRC/data/$APP_ID.desktop" > "$SHARE/
 mv "$SHARE/applications/$APP_ID.desktop.tmp" "$SHARE/applications/$APP_ID.desktop"
 command -v update-desktop-database >/dev/null && update-desktop-database "$SHARE/applications" || true
 
-echo "Installed. Open \"Speaker Tuner\" from your app grid, or run: speaker-tuner"
+echo "Installed. Open \"Sound Tuner\" from your app grid, or run: speaker-tuner"

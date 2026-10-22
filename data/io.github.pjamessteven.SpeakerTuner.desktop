@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
-Name=Speaker Tuner
+Name=Sound Tuner
 Comment=EQ, loudness, 3D and crossover for your speakers
 Exec=speaker-tuner
 Icon=io.github.pjamessteven.SpeakerTuner
