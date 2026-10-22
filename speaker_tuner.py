@@ -981,7 +981,7 @@ class Window(Adw.ApplicationWindow):
 
         # ---- right column: EQ, 3D
         g = Adw.PreferencesGroup(title="Equalizer",
-                                 description="Drag to shape the curve · scroll to widen · double-click to reset")
+                                 description="Drag to shape · scroll to widen · double-click to reset")
         right.append(g)
         hdr = Gtk.Box(spacing=6, valign=Gtk.Align.CENTER)
         self.presets = Gtk.DropDown.new_from_strings(["Custom"] + list(PRESETS))
