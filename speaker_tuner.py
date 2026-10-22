@@ -971,11 +971,11 @@ class Window(Adw.ApplicationWindow):
             over = Adw.SwitchRow(title="Allow volume above 100%", subtitle="Lets the system volume go up to 150%")
             self.sound_settings.bind("allow-volume-above-100-percent", over, "active", Gio.SettingsBindFlags.DEFAULT)
             g.add(over)
-        g.add(self.slider("Boost", "Gain into the limiter", 0, 20, 0.5, lambda v: f"{v:+.1f} dB", "boost_db"))
-        g.add(self.slider("Ceiling", "Highest output level", -6, 0, 0.1, lambda v: f"{v:.1f} dBFS", "ceiling_db"))
-        g.add(self.slider("Limiter release", "Longer is smoother, shorter is louder", 1, 100, 1,
+        g.add(self.slider("Boost", "Louder without clipping", 0, 20, 0.5, lambda v: f"{v:+.1f} dB", "boost_db"))
+        g.add(self.slider("Ceiling", "Maximum output level", -6, 0, 0.1, lambda v: f"{v:.1f} dBFS", "ceiling_db"))
+        g.add(self.slider("Limiter release", "Longer is smoother, shorter is punchier", 1, 100, 1,
                           lambda v: f"{v:.0f} ms", "release_ms"))
-        g.add(self.slider("Overdrive", "Gain after the limiter. Above 0 it clips (crackles)", 0, 18, 0.5,
+        g.add(self.slider("Overdrive", "Extra gain that distorts", 0, 18, 0.5,
                           lambda v: f"{v:+.1f} dB", "drive_db"))
 
         self.channels_group = Adw.PreferencesGroup(
@@ -1019,9 +1019,9 @@ class Window(Adw.ApplicationWindow):
         g.add(self.spatial_row)
         self.spatial_sliders = [
             self.slider("Stereo width", "100% is normal", 0, 200, 5, lambda v: f"{v:.0f}%", "width_pct"),
-            self.slider("3D amount", "Crosstalk cancellation, pushes sound past the speakers", 0, 100, 5,
+            self.slider("3D amount", "Spreads sound past the speakers", 0, 100, 5,
                         lambda v: f"{v:.0f}%", "xtc_pct"),
-            self.slider("3D delay", "Tune for your seating distance", 20, 300, 5, lambda v: f"{v:.0f} µs", "xtc_us"),
+            self.slider("3D delay", "Match to your seating distance", 20, 300, 5, lambda v: f"{v:.0f} µs", "xtc_us"),
         ]
         for r in self.spatial_sliders:
             g.add(r)
@@ -1039,17 +1039,30 @@ class Window(Adw.ApplicationWindow):
     # -- widget factories
 
     def slider(self, title, tip, lo, hi, step, fmt, key=None, get=None, put=None, log=False):
-        """ActionRow with a scale. Reads/writes self.s[key], or uses get()/put(v) for nested values."""
+        """Row with title + short description and the value on top, full-width slider below.
+
+        Reads/writes self.s[key], or uses get()/put(v) for nested values.
+        """
         get = get or (lambda: self.s[key])
         put = put or (lambda v: self.s.__setitem__(key, v))
-        row = Adw.ActionRow(title=title, tooltip_text=tip)
-        val = Gtk.Label(css_classes=["numeric", "dim-label"], width_chars=9, xalign=1)
+        row = Adw.PreferencesRow(title=title, activatable=False)
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2,
+                      margin_top=10, margin_bottom=6, margin_start=12, margin_end=12)
+        top = Gtk.Box(spacing=12)
+        text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
+        text.append(Gtk.Label(label=title, xalign=0))
+        if tip:
+            text.append(Gtk.Label(label=tip, xalign=0, wrap=True, css_classes=["caption", "dim-label"]))
+        top.append(text)
+        val = Gtk.Label(css_classes=["numeric", "dim-label"], xalign=1, valign=Gtk.Align.CENTER)
+        top.append(val)
+        box.append(top)
         lo_s, hi_s = (to_log(lo), to_log(hi)) if log else (lo, hi)
         sc = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, lo_s, hi_s, 0.001 if log else step)
         sc.set_draw_value(False)
         sc.set_hexpand(True)
-        sc.set_size_request(140, -1)
-        sc.set_valign(Gtk.Align.CENTER)
+        box.append(sc)
+        row.set_child(box)
 
         def value_of(scale_v):
             v = from_log(scale_v) if log else scale_v
@@ -1068,8 +1081,6 @@ class Window(Adw.ApplicationWindow):
             val.set_text(fmt(v))
 
         sc.connect("value-changed", changed)
-        row.add_suffix(sc)
-        row.add_suffix(val)
         self.loaders.append(load)
         return row
 
@@ -1212,15 +1223,15 @@ class Window(Adw.ApplicationWindow):
 
         src.connect("notify::selected", src_changed)
         exp.add_row(src)
-        exp.add_row(self.slider("High-pass", "Cuts below this frequency (24 dB/oct)", FREQ_MIN, FREQ_MAX, 1,
+        exp.add_row(self.slider("High-pass", "Removes sound below this", FREQ_MIN, FREQ_MAX, 1,
                                 lambda v: "Off" if v <= FREQ_MIN + 0.5 else fmt_hz(v),
                                 get=lambda: cfg()["hp"], put=put("hp"), log=True))
-        exp.add_row(self.slider("Low-pass", "Cuts above this frequency (24 dB/oct)", FREQ_MIN, FREQ_MAX, 1,
+        exp.add_row(self.slider("Low-pass", "Removes sound above this", FREQ_MIN, FREQ_MAX, 1,
                                 lambda v: "Off" if v >= FREQ_MAX - 0.5 else fmt_hz(v),
                                 get=lambda: cfg()["lp"], put=put("lp"), log=True))
         exp.add_row(self.slider("Level", None, -24, 12, 0.5, lambda v: f"{v:+.1f} dB",
                                 get=lambda: cfg()["db"], put=put("db")))
-        exp.add_row(self.slider("Delay", "Time-align speakers at different distances", 0, 20, 0.05,
+        exp.add_row(self.slider("Delay", "Aligns speakers at different distances", 0, 20, 0.05,
                                 lambda v: f"{v:.2f} ms", get=lambda: cfg()["delay_ms"], put=put("delay_ms")))
         inv = Adw.SwitchRow(title="Invert polarity")
 
