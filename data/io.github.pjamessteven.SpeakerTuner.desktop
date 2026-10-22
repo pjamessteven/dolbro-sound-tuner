@@ -8,3 +8,4 @@ Terminal=false
 Categories=AudioVideo;Audio;
 Keywords=equalizer;eq;pipewire;speakers;bass;loudness;crossover;3d;
 StartupNotify=true
+X-Purism-FormFactor=Workstation;Mobile;

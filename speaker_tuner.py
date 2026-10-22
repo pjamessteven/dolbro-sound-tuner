@@ -913,7 +913,12 @@ class Window(Adw.ApplicationWindow):
         self.split = Adw.OverlaySplitView(min_sidebar_width=360, max_sidebar_width=440, sidebar_width_fraction=0.36)
 
         side_view = Adw.ToolbarView()
-        side_view.add_top_bar(Adw.HeaderBar(show_title=False))
+        side_header = Adw.HeaderBar(show_title=False)
+        # When the sidebar is an overlay (narrow windows/phones) it needs its own way back to the EQ.
+        self.sidebar_close = Gtk.ToggleButton(icon_name="sidebar-show-symbolic", tooltip_text="Hide settings",
+                                              visible=False)
+        side_header.pack_start(self.sidebar_close)
+        side_view.add_top_bar(side_header)
         left = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18,
                        margin_top=6, margin_bottom=24, margin_start=18, margin_end=18)
         side_view.set_content(Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER, child=left))
@@ -921,15 +926,16 @@ class Window(Adw.ApplicationWindow):
 
         main_view = Adw.ToolbarView()
         header = Adw.HeaderBar()
-        sidebar_btn = Gtk.ToggleButton(icon_name="sidebar-show-symbolic", tooltip_text="Show settings", visible=False)
-        self.split.bind_property("show-sidebar", sidebar_btn, "active",
-                                 GObject.BindingFlags.BIDIRECTIONAL | GObject.BindingFlags.SYNC_CREATE)
+        self.sidebar_btn = sidebar_btn = Gtk.ToggleButton(icon_name="sidebar-show-symbolic", tooltip_text="Show settings", visible=False)
+        for btn in (sidebar_btn, self.sidebar_close):
+            self.split.bind_property("show-sidebar", btn, "active",
+                                     GObject.BindingFlags.BIDIRECTIONAL | GObject.BindingFlags.SYNC_CREATE)
         header.pack_start(sidebar_btn)
         main_view.add_top_bar(header)
         self.banner = Adw.Banner()
         self.banner.connect("button-clicked", self.on_reload)
         main_view.add_top_bar(self.banner)
-        right = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18,
+        self.main_box = right = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18,
                         margin_top=6, margin_bottom=24, margin_start=24, margin_end=24)
         main_view.set_content(Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER, child=right))
         self.split.set_content(main_view)
@@ -940,6 +946,7 @@ class Window(Adw.ApplicationWindow):
         bp = Adw.Breakpoint.new(Adw.BreakpointCondition.parse("max-width: 820sp"))
         bp.add_setter(self.split, "collapsed", True)
         bp.add_setter(sidebar_btn, "visible", True)
+        bp.add_setter(self.sidebar_close, "visible", True)
         self.add_breakpoint(bp)
 
         # ---- left column: presets, output, loudness, channels
@@ -1004,6 +1011,7 @@ class Window(Adw.ApplicationWindow):
         band_row = Gtk.Box(spacing=12, margin_top=10, margin_bottom=10, margin_start=14, margin_end=10)
         self.band_label = Gtk.Label(css_classes=["heading"], xalign=0, hexpand=True)
         band_row.append(self.band_label)
+        self.spin_labels = Gtk.SizeGroup(mode=Gtk.SizeGroupMode.HORIZONTAL)
         band_box = Gtk.Box(spacing=8, halign=Gtk.Align.END)
         band_row.append(band_box)
         eq_card.append(band_row)
@@ -1012,6 +1020,18 @@ class Window(Adw.ApplicationWindow):
         self.spin_g = self.spin(band_box, "Gain", -15, 15, 0.5, 1, "t")
         self.spin_q = self.spin(band_box, "Width", 0.1, 4.0, 0.1, 1, "q", to_ui=q_to_octaves, from_ui=octaves_to_q,
                                 tip="How wide the band is, in octaves. Scroll over the graph to change it")
+
+        # Phone layout: settings live in the slide-out sidebar, band controls stack, tighter margins.
+        phone = Adw.Breakpoint.new(Adw.BreakpointCondition.parse("max-width: 560sp"))
+        phone.add_setter(self.split, "collapsed", True)
+        phone.add_setter(self.sidebar_btn, "visible", True)
+        phone.add_setter(self.sidebar_close, "visible", True)
+        phone.add_setter(band_row, "orientation", Gtk.Orientation.VERTICAL)
+        phone.add_setter(band_box, "orientation", Gtk.Orientation.VERTICAL)
+        phone.add_setter(band_box, "halign", Gtk.Align.START)
+        for side in ("margin-start", "margin-end"):
+            phone.add_setter(self.main_box, side, 12)
+        self.add_breakpoint(phone)
 
         g = Adw.PreferencesGroup(title="3D", description="Best sitting centred, about an arm's length away")
         right.append(g)
@@ -1092,7 +1112,11 @@ class Window(Adw.ApplicationWindow):
         return row
 
     def spin(self, box, label, lo, hi, step, digits, key, to_ui=None, from_ui=None, tip=None):
-        box.append(Gtk.Label(label=label, css_classes=["dim-label"], margin_start=6, tooltip_text=tip))
+        pair = Gtk.Box(spacing=6)  # label + spin stay together when the row stacks on phones
+        lab = Gtk.Label(label=label, css_classes=["dim-label"], margin_start=6, tooltip_text=tip, xalign=0)
+        self.spin_labels.add_widget(lab)
+        pair.append(lab)
+        box.append(pair)
         sp = Gtk.SpinButton.new_with_range(lo, hi, step)
         sp.set_digits(digits)
         sp.set_width_chars(6 if key == "f" else 4)
@@ -1107,7 +1131,7 @@ class Window(Adw.ApplicationWindow):
             self.on_bands_changed(from_spin=True)
 
         sp.connect("value-changed", changed)
-        box.append(sp)
+        pair.append(sp)
         return sp
 
     # -- sync

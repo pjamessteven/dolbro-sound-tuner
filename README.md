@@ -11,6 +11,10 @@ with a sub or a full 7.1 setup, and every app plays through it.
 
 <img src="data/screenshots/spectrum.gif" alt="Shaping the EQ curve over the live output spectrum">
 
+On phones and narrow windows the settings move into a slide-out panel:
+
+<img src="data/screenshots/mobile.png" alt="Speaker Tuner on a phone: equalizer and settings panel" width="420">
+
 ## Features
 
 - **An EQ you can draw:** sweep across the graph in either direction to paint
