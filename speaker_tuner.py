@@ -361,11 +361,13 @@ class Window(Adw.ApplicationWindow):
         self.default_row.connect("notify::active", self.on_default_toggled)
         g.add(self.default_row)
 
-        # Profiles: one row, actions as icon buttons
+        # Profiles: dropdown plus icon buttons on one row. Edits auto-save into the selected profile.
         g = Adw.PreferencesGroup()
         page.add(g)
-        self.profile_row = Adw.ComboRow(title="Profile")
-        self.profile_row.connect("notify::selected", self.on_profile_selected)
+        self.profile_row = Adw.ActionRow(title="Profile")
+        self.profile_dd = Gtk.DropDown(valign=Gtk.Align.CENTER)
+        self.profile_dd.connect("notify::selected", self.on_profile_selected)
+        self.profile_row.add_suffix(self.profile_dd)
         for icon, tip, cb in (("document-save-symbolic", "Save as…", self.on_save_profile),
                               ("user-trash-symbolic", "Delete profile", self.on_delete_profile),
                               ("edit-undo-symbolic", "Reset to defaults", self.on_reset)):
@@ -514,12 +516,13 @@ class Window(Adw.ApplicationWindow):
         was, self.building = self.building, True
         self.profiles = load_profiles()
         self.profile_names = sorted(self.profiles, key=str.casefold)
-        self.profile_row.set_model(Gtk.StringList.new(self.profile_names or ["No saved profiles"]))
-        self.profile_row.set_sensitive(bool(self.profile_names))
-        self.delete_btn.set_sensitive(bool(self.profile_names))
+        # Index 0 is "None": settings not tied to a profile.
+        self.profile_dd.set_model(Gtk.StringList.new(["None"] + self.profile_names))
         current = select if select is not None else self.s.get("profile")
-        self.profile_row.set_selected(self.profile_names.index(current) if current in self.profile_names
-                                      else Gtk.INVALID_LIST_POSITION)
+        if current not in self.profile_names:
+            self.s.pop("profile", None)
+        self.profile_dd.set_selected(self.profile_names.index(current) + 1 if current in self.profile_names else 0)
+        self.delete_btn.set_sensitive(current in self.profile_names)
         self.building = was
 
     def pick_initial_sink(self):
@@ -570,18 +573,25 @@ class Window(Adw.ApplicationWindow):
 
     # -- profiles
 
-    def on_profile_selected(self, row, _):
-        idx = row.get_selected()
-        if self.building or idx == Gtk.INVALID_LIST_POSITION or idx >= len(self.profile_names):
+    def on_profile_selected(self, dd, _):
+        idx = dd.get_selected()
+        if self.building or idx == Gtk.INVALID_LIST_POSITION:
             return
-        name = self.profile_names[idx]
+        if idx == 0:  # "None": keep the current sound, stop auto-saving into a profile
+            self.s.pop("profile", None)
+            self.delete_btn.set_sensitive(False)
+            self.schedule_apply()
+            return
+        name = self.profile_names[idx - 1]
         self.apply_values(self.profiles[name])
         self.s["profile"] = name
+        self.delete_btn.set_sensitive(True)
         self.toast(f"Loaded “{name}”")
 
     def on_save_profile(self, _row):
-        entry = Gtk.Entry(text=self.s.get("profile") or "", placeholder_text="Profile name", activates_default=True)
-        dlg = Adw.AlertDialog(heading="Save profile", body="Save the current settings under a name.")
+        entry = Gtk.Entry(placeholder_text="Profile name", activates_default=True)
+        dlg = Adw.AlertDialog(heading="Save as new profile",
+                              body="Changes you make afterwards are saved into it automatically.")
         dlg.set_extra_child(entry)
         dlg.add_response("cancel", "Cancel")
         dlg.add_response("save", "Save")
@@ -611,11 +621,10 @@ class Window(Adw.ApplicationWindow):
         dlg.present(self)
 
     def on_delete_profile(self, _row):
-        idx = self.profile_row.get_selected()
-        if idx == Gtk.INVALID_LIST_POSITION or idx >= len(self.profile_names):
+        name = self.s.get("profile")
+        if name not in self.profile_names:
             self.toast("Pick a profile to delete first")
             return
-        name = self.profile_names[idx]
         dlg = Adw.AlertDialog(heading=f"Delete “{name}”?", body="Your current settings stay as they are.")
         dlg.add_response("cancel", "Cancel")
         dlg.add_response("delete", "Delete")
@@ -666,6 +675,12 @@ class Window(Adw.ApplicationWindow):
         self.pending = 0
         try:
             save_settings(self.s)
+            name = self.s.get("profile")
+            if name and name in self.profiles:  # auto-save edits into the active profile
+                values = {k: v for k, v in self.s.items() if k in DEFAULTS and k not in DEVICE_KEYS}
+                if self.profiles[name] != values:
+                    self.profiles[name] = values
+                    save_profiles(self.profiles)
         except OSError as e:
             self.toast(f"Could not save settings: {e}")
         if self.node_id is not None and not self.banner.get_revealed():

@@ -24,7 +24,7 @@ app to keep open, and changes apply live while music is playing.
   centred in front of closely spaced speakers, such as a laptop's.
 - **Virtual crossover**: mixes to mono and sends the lows to one speaker and
   the highs to the other (Linkwitz-Riley, 24 dB/oct), with per-speaker levels.
-- **Profiles**: save, name, load and delete settings. Reset to defaults any time.
+- **Profiles**: pick a profile from the dropdown, or save the current sound as a new named one. Changes save into the selected profile automatically. Delete or reset to defaults any time.
 
 ## Requirements
 
