@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.pjamessteven.SpeakerTuner</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+
+  <name>Sound Tuner</name>
+  <summary>System-wide EQ, crossovers and loudness for your speakers</summary>
+
+  <developer id="io.github.pjamessteven">
+    <name>pjamessteven</name>
+  </developer>
+
+  <description>
+    <p>
+      Get the most out of your laptop speakers, or finely tune your sound system.
+      Sound Tuner adds a tuned output in front of any PipeWire sound device, so every
+      app plays through it.
+    </p>
+    <ul>
+      <li>An equalizer you can draw, over a live spectrum of what's playing</li>
+      <li>Boost with a look-ahead limiter, so it gets louder without clipping</li>
+      <li>3D virtual surround and stereo width</li>
+      <li>Per-channel routing, crossovers, delay and bass management for 2.0 up to 7.1</li>
+      <li>Presets you can name, save and switch between</li>
+    </ul>
+    <p>
+      Processing runs inside PipeWire itself, so your sound stays tuned with the app closed.
+      The interface adapts from phones to wide desktop screens.
+    </p>
+  </description>
+
+  <launchable type="desktop-id">io.github.pjamessteven.SpeakerTuner.desktop</launchable>
+
+  <url type="homepage">https://github.com/pjamessteven/dolbro-sound-tuner</url>
+  <url type="bugtracker">https://github.com/pjamessteven/dolbro-sound-tuner/issues</url>
+  <url type="vcs-browser">https://github.com/pjamessteven/dolbro-sound-tuner</url>
+  <url type="translate">https://github.com/pjamessteven/dolbro-sound-tuner/tree/main/locale</url>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>Drawing the equalizer curve over the live spectrum</caption>
+      <image>https://raw.githubusercontent.com/pjamessteven/dolbro-sound-tuner/v0.4.0/data/screenshots/desktop.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>On a phone: equalizer and settings panel</caption>
+      <image>https://raw.githubusercontent.com/pjamessteven/dolbro-sound-tuner/v0.4.0/data/screenshots/mobile.png</image>
+    </screenshot>
+  </screenshots>
+
+  <categories>
+    <category>AudioVideo</category>
+    <category>Audio</category>
+  </categories>
+
+  <keywords>
+    <keyword>equalizer</keyword>
+    <keyword>EQ</keyword>
+    <keyword>PipeWire</keyword>
+    <keyword>speakers</keyword>
+    <keyword>crossover</keyword>
+    <keyword>loudness</keyword>
+    <keyword>surround</keyword>
+  </keywords>
+
+  <requires>
+    <display_length compare="ge">360</display_length>
+  </requires>
+  <recommends>
+    <control>pointing</control>
+    <control>keyboard</control>
+    <control>touch</control>
+  </recommends>
+
+  <branding>
+    <color type="primary" scheme_preference="light">#8fbcf9</color>
+    <color type="primary" scheme_preference="dark">#1550c8</color>
+  </branding>
+
+  <content_rating type="oars-1.1"/>
+
+  <releases>
+    <release version="0.4.0" date="2026-10-23">
+      <description>
+        <p>First packaged release.</p>
+        <ul>
+          <li>Drawable equalizer with live spectrum</li>
+          <li>Per-channel routing and crossovers for any channel layout</li>
+          <li>3D virtual surround, boost and limiter</li>
+          <li>Phone-friendly layout</li>
+          <li>Translated into 30 languages</li>
+        </ul>
+      </description>
+    </release>
+  </releases>
+</component>

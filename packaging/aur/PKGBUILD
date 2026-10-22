@@ -1,0 +1,17 @@
+# Maintainer: pjamessteven <peter@detrans.ai>
+pkgname=sound-tuner
+pkgver=0.4.0
+pkgrel=1
+pkgdesc="System-wide EQ, crossovers and loudness for your speakers (PipeWire, GNOME)"
+arch=('any')
+url="https://github.com/pjamessteven/dolbro-sound-tuner"
+license=('MIT')
+depends=('python' 'python-gobject' 'gtk4' 'libadwaita' 'pipewire' 'libpulse' 'zam-plugins-lv2' 'hicolor-icon-theme')
+makedepends=('make')
+source=("dolbro-sound-tuner-$pkgver.tar.gz::$url/archive/v$pkgver.tar.gz")
+sha256sums=('SKIP_UNTIL_TAGGED')
+
+package() {
+  cd "dolbro-sound-tuner-$pkgver"
+  make install PREFIX=/usr DESTDIR="$pkgdir"
+}

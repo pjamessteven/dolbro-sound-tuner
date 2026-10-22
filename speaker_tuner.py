@@ -52,7 +52,7 @@ def _(text):
     return TRANSLATIONS.get(text) or text
 
 APP_ID = "io.github.pjamessteven.SpeakerTuner"
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 NODE_NAME = "effect_input.speaker_tuner"
 OUT_NODE_NAME = "effect_output.speaker_tuner"
 CONF_PATH = os.path.expanduser("~/.config/pipewire/pipewire.conf.d/speaker-tuner.conf")
