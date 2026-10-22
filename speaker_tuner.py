@@ -653,6 +653,10 @@ def fmt_hz(f):
     return f"{f / 1000:.1f} kHz" if f >= 1000 else f"{f:.0f} Hz"
 
 
+def band_text(i, b):
+    return f"Band {i + 1}  ·  {fmt_hz(b['f'])}  ·  {b['t']:+.1f} dB"
+
+
 def q_to_octaves(q):
     """Bandwidth in octaves of a peaking filter with this Q (RBJ definition)."""
     return 2 / math.log(2) * math.asinh(1 / (2 * q))
@@ -1026,9 +1030,7 @@ class Window(Adw.ApplicationWindow):
         phone.add_setter(self.split, "collapsed", True)
         phone.add_setter(self.sidebar_btn, "visible", True)
         phone.add_setter(self.sidebar_close, "visible", True)
-        phone.add_setter(band_row, "orientation", Gtk.Orientation.VERTICAL)
-        phone.add_setter(band_box, "orientation", Gtk.Orientation.VERTICAL)
-        phone.add_setter(band_box, "halign", Gtk.Align.START)
+        phone.add_setter(band_box, "visible", False)  # touch users drag the curve; no fine controls
         for side in ("margin-start", "margin-end"):
             phone.add_setter(self.main_box, side, 12)
             phone.add_setter(self.side_box, side, 12)
@@ -1328,7 +1330,7 @@ class Window(Adw.ApplicationWindow):
     def on_bands_changed(self, from_spin=False):
         solve_gains(self.s["bands"])
         b = self.s["bands"][self.eq.selected]
-        self.band_label.set_text(f"Band {self.eq.selected + 1}  ·  {fmt_hz(b['f'])}")
+        self.band_label.set_text(band_text(self.eq.selected, b))
         self.eq.invalidate()
         if not from_spin:
             was, self.building = self.building, True
@@ -1339,7 +1341,7 @@ class Window(Adw.ApplicationWindow):
 
     def on_band_selected(self, i):
         b = self.s["bands"][i]
-        self.band_label.set_text(f"Band {i + 1}  ·  {fmt_hz(b['f'])}")
+        self.band_label.set_text(band_text(i, b))
         was, self.building = self.building, True
         self.spin_f.set_value(b["f"])
         self.spin_g.set_value(b["t"])
