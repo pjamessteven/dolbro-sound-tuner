@@ -396,9 +396,8 @@ class Window(Adw.ApplicationWindow):
         # EQ
         g = Adw.PreferencesGroup(title="Equalizer")
         page.add(g)
-        presets = Gtk.DropDown.new_from_strings(list(PRESETS))
+        presets = Gtk.DropDown.new_from_strings(["Custom"] + list(PRESETS))
         presets.set_valign(Gtk.Align.CENTER)
-        presets.set_selected(Gtk.INVALID_LIST_POSITION)
         presets.connect("notify::selected", self.on_preset)
         g.set_header_suffix(presets)
         self.presets = presets
@@ -489,7 +488,15 @@ class Window(Adw.ApplicationWindow):
             val.set_text(f"{gdb:+.1f}")
         self.xo_row.set_active(self.s["crossover"])
         self.side_row.set_selected(0 if self.s["sub_side"] == "left" else 1)
-        self.presets.set_selected(Gtk.INVALID_LIST_POSITION)
+        self.sync_preset()
+        self.building = was
+
+    def sync_preset(self):
+        """Select the preset matching the current EQ, or "Custom"."""
+        names = list(PRESETS)
+        match = next((i + 1 for i, n in enumerate(names) if [float(x) for x in PRESETS[n]] == self.s["eq"]), 0)
+        was, self.building = self.building, True
+        self.presets.set_selected(match)
         self.building = was
 
     def fill_devices(self):
@@ -536,13 +543,14 @@ class Window(Adw.ApplicationWindow):
         val.set_text(f"{v:+.1f}")
         if not self.building:
             self.s["eq"][i] = v
+            self.sync_preset()
             self.schedule_apply()
 
     def on_preset(self, dd, _):
         idx = dd.get_selected()
-        if self.building or idx == Gtk.INVALID_LIST_POSITION:
+        if self.building or idx in (0, Gtk.INVALID_LIST_POSITION):
             return
-        self.s["eq"] = [float(x) for x in PRESETS[list(PRESETS)[idx]]]
+        self.s["eq"] = [float(x) for x in PRESETS[list(PRESETS)[idx - 1]]]
         was, self.building = self.building, True
         for (sc, val), gdb in zip(self.eq_scales, self.s["eq"]):
             sc.set_value(gdb)

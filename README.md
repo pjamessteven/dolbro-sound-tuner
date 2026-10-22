@@ -2,6 +2,8 @@
 
 A small GNOME app that makes laptop and desktop speakers sound better on Linux.
 
+<img src="data/screenshots/main.png" alt="Speaker Tuner window" width="420">
+
 It adds a virtual output, **Speaker Tuner**, in front of any PipeWire sink. All
 processing runs inside PipeWire itself (a `filter-chain` module), so there's no
 app to keep open, and changes apply live while music is playing.
